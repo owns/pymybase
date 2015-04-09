@@ -1,6 +1,6 @@
-# README #
+# pymybase #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This is more an set of base classes helpful for doing things.  These classes are used through several of my projects to simplify things.
 
 ### What is this repository for? ###
 
