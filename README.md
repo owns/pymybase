@@ -1,6 +1,7 @@
 # pymybase #
 
-This is more an set of base classes helpful for doing things.  These classes are used through several of my projects to simplify things.
+This is more an set of base classes helpful for doing things.  These classes are used through several projects to simplify things.
+Enjoy.
 
 ### What is this repository for? ###
 

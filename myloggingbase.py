@@ -16,19 +16,19 @@ class MyLoggingBase(object):
         .logger.warning # something's wrong, but skippable
         .logger.error # something's wrong and may break something later
         .logger.critical # something really bad happened! nuclear!
-    It also has some timestamp things...
+    It also has some static timestamp things...
     """
     __version__ = '0.1.0'
 
     logger = None
 
     def __init__(self,name=None):
-        """name -- a str/unicode name of the logger (default: class name)"""
+        """name -- a str/unicode name of the logger (default: <class name>)"""
         object.__init__(self)
         self.logger = logging.getLogger(name if isinstance(name,(unicode,str))
                                         else self.__class__.__name__)
 
-    def set_logger_level(lvl):
+    def set_logger_level(self,lvl):
         """Set the logging level for the class.  Returns True if set correctly."""
         if self.logger_set():
             if lvl in (logging.DEBUG,logging.INFO,logging.WARNING,
@@ -63,7 +63,10 @@ class MyLoggingBase(object):
         """Helper function for getting the current datetime (datetime.now())"""
         return datetime.datetime.now()
 
-
+#===============================================================================
+# Main
+#===============================================================================
 if __name__ == '__main__':
-    import test_myloggingbase
-    test_myloggingbase.run_test()
+    try: from tests import test_myloggingbase
+    except ImportError: print 'no test for myloggingbase'
+    else: test_myloggingbase.run_test()

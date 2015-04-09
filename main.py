@@ -2,10 +2,14 @@
 Elias Wood (owns13927@yahoo.com)
 2015-04-06
 """
+
 import os
-#============================================================================#
-# Init Logging
-#============================================================================#
+from myloggingbase import MyLoggingBase
+import traceback
+
+#===============================================================================
+# # Init Logging
+#===============================================================================
 def init_logging(**keys):
     """
     file_log_name=None  # name of log file
@@ -40,9 +44,8 @@ def init_logging(**keys):
     if file_log_lvl:
         # add file handler
         import os.path
-        self.logPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'logs')
-        if file_log_name==None: file_log_name = os.path.join(self.logPath,'log{}.log'.format(self.get_current_timestamp(True)))
-        self._log_filename = file_log_name
+        logPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'logs')
+        if file_log_name==None: file_log_name = os.path.join(logPath,'log{}.log'.format(MyLoggingBase.get_current_timestamp(True)))
         h = logging.FileHandler(file_log_name)#,mode='w') #to not append for the day
         h.setLevel(logging.__getattribute__(file_log_lvl)) # @UndefinedVariable
         h.setFormatter(log_formatter)
@@ -55,19 +58,19 @@ def init_logging(**keys):
         h2.setLevel(logging.__getattribute__(console_log_lvl)) # @UndefinedVariable
         logging.getLogger().addHandler(h2)
     else:
-        print '==================================='
-        print 'not showing in console per request!'
+        print '======================================='
+        print 'not showing log in console per request!'
         print file_log_name
-        print '==================================='
-        logging.warning('===================================')
-        logging.warning('not showing in console per request!')
-        logging.warning('===================================')
+        print '======================================='
+        logging.warning('=======================================')
+        logging.warning('not showing log in console per request!')
+        logging.warning('=======================================')
         
         
     if not file_log_lvl:
-        logging.warning('===================================')
-        logging.warning('= not saving to file per request! =')
-        logging.warning('===================================')
+        logging.warning('=======================================')
+        logging.warning('= not saving log to file per request! =')
+        logging.warning('=======================================')
         
     # log all exceptions!
     def exception_hook(exctype, exc, tb):
@@ -77,20 +80,20 @@ def init_logging(**keys):
             
     sys.excepthook = exception_hook
 
-#============================================================================#
-# get/join with project folders
-#============================================================================#
+#===============================================================================
+# # get/join with project folders
+#===============================================================================
 def get_resource_fd(filename=None):
     """pass a filename to join with the resource folder"""
     dir_name = os.path.join(os.path.dirname(__file__),'resources')
     return join_folder_and_file(dir_name,filename)
 
-def get_log_fd():
+def get_log_fd(filename=None):
     """pass a filename to join with the log folder"""
     dir_name = os.path.join(os.path.dirname(__file__),'logs')
     return join_folder_and_file(dir_name,filename)
 
-def get_output_fd():
+def get_output_fd(filename=None):
     """pass a filename to join with the output folder"""
     dir_name = os.path.join(os.path.dirname(__file__),'output')
     return join_folder_and_file(dir_name,filename)
@@ -98,8 +101,14 @@ def get_output_fd():
 def join_folder_and_file(fd,filename=None):
     """tests if folder exists, returns None if if doesn't, the filepath if successful!"""
     if isinstance(filename,(str,unicode)):
-        return os.path.join(dir_name,filename)
-    else: return dir_name
+        return os.path.join(fd,filename)
+    else: return fd
 
+#===============================================================================
+# MAIN
+#===============================================================================
 if __name__ == '__main__':
-    pass
+    try: from tests import test_main
+    except ImportError: print 'no test for main'
+    else: test_main.run_test()
+    
