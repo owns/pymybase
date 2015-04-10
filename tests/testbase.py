@@ -28,7 +28,8 @@ class TestBase(unittest.TestCase,MyLoggingBase):
         
     def setUp(self):
         """init logging for testing - no file"""
-        init_logging(file_log_lvl=None,console_log_lvl='DEBUG')
+        init_logging(file_log_lvl=None,console_log_lvl='DEBUG',
+                     show_warning=False)
 
     def tearDown(self):
         """close logging & whatever else is needed..."""

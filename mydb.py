@@ -9,37 +9,44 @@ import sqlite3 as sql
 from threading import Lock as Thread_Lock
 import Queue
 from myloggingbase import MyLoggingBase
-from tests import test_mydb
 
 class MyDb(MyLoggingBase):
     """
-    db with jobs table
+    db with jobs table.  Works closely with MyThread class which masks the using
+    of this class to the end-user (the developer) for handling 'jobs' and
+    smart recovery.  Read the details in the MyThread class description.
     NOTES:
+        Methods that start with _* are usually not thread safe and don't check
+            if the db is open - use with caution.
         if you want to put a limit on the queues:
             just run populate_queues.
             It'll go through all the remaining jobs and add them
-            can add option in mythread to do this whenever a job completes?
+            can add option in mythread to do this whenever the queue is empty.
     """
     
+    _queues = None
     _db = None # the database connection object
     _filename = None # the name of the db file
-    _lock = None # a thread lock to control read/updates
+    _lock = None # a thread lock to control read/writes
     
     _jobs_added_count = None
     _jobs_updated_count = None
-    #_isolation_level = None # the iso level (https://docs.python.org/2/library/sqlite3.html#connection-objects)
     
     _JOBS_ID,_JOBS_ITEM_ID,_JOBS_JOB_TYPE,_JOBS_INIT_DATA,_JOBS_START_VALUE,_JOBS_END_VALUE = 0,1,2,3,4,5
     
     JOB_ID,ITEM_ID,INIT_DATA,START_VALUE,END_VALUE = 0,1,2,3,4
     
     def __init__(self,filename=None):
+        """filename if the file name for the db file. If no filename is passed,
+        no db will be created; you can then use either .new(...) or .open(...)."""
+        
         MyLoggingBase.__init__(self)
         
         self._jobs_added_count = 0
         self._jobs_updated_count = 0
         
         self._lock = Thread_Lock()
+        self._queues = {}
         
         if filename != None:
             self.open(filename)
@@ -48,8 +55,7 @@ class MyDb(MyLoggingBase):
     # Creating a new Db
     #===========================================================================
     def new(self,filename):
-        # create a new db
-        # will NOT overwrite an existing file!
+        """create a new db.  Will NOT overwrite an existing file! returns """
         
         # shouldn't happen...
         if os.path.exists(filename): return False
@@ -62,13 +68,13 @@ class MyDb(MyLoggingBase):
         self._db = db
         
         self.logger.info('database created %s',filename)
-        self._init_db_structure()
+        return self._init_db_structure()
         
     #===========================================================================
     #=============================== DB FILE IO ================================
     #===========================================================================
     def _try_open(self,filename):
-        # close db if one is open
+        """close prev db and try to open the new one. NOTE: will create."""
         if self.is_open(): self.close()
         
         db = None
@@ -85,12 +91,16 @@ class MyDb(MyLoggingBase):
     # Open Db
     #===========================================================================
     def open(self,filename,create=True):
-        # if create is true, a new db will be created if the specified one DNE.
-        # NOTE: pass ':memory:' for filename to get a 'in RAM' db
-        if self.__debug: self.logger.debug('filename=%s create=%s',filename,create)
+        """If create is True, a new db will be created if the specified one DNE.
+        # NOTE: pass ':memory:' for filename to get an 'in memory/RAM' db"""
+        self.logger.debug('filename=%s create=%s',filename,create)
+        
+        # create an in memory db
+        if filename==':memory:':
+            return self.new(filename)
         
         # open db if file exists...
-        if os.path.exists(filename) or filename==':memory:':
+        elif os.path.exists(filename):
             # init db - try
             try: self._db = sql.connect(filename,check_same_thread=False)
             except sql.Error, e:
@@ -102,10 +112,11 @@ class MyDb(MyLoggingBase):
             else:
                 self.logger.info('database opened')
                 self._filename = filename
+                self.populate_queues()
                 return True
-        
+            
         # create db only if it should be created!
-        elif create:
+        elif create or filename==':memory:':
             # make sure the file can be created
             try: open(filename,'w').close()
             except IOError as e:
@@ -126,8 +137,8 @@ class MyDb(MyLoggingBase):
     # Close Db
     #===========================================================================
     def close(self,commit=True):
-        # return true if db closed successfully
-        # if there are changes (check _isChanged()) they are saved (commit=True)
+        """return true if db closed successfully.  The db commits every action;
+        the 'commit' argument is there for overriding and has no function."""
         retV = False
         with self._lock:
             if self._db!=None:
@@ -171,23 +182,9 @@ class MyDb(MyLoggingBase):
             
         return filename
     
-    #===========================================================================
-    # Initialize DB Structure (tables etc)
-    #===========================================================================
-    def _init_db_structure(self):
-        # create job table
-        with self._db as conn:
-            conn.execute('''
-                CREATE TABLE jobs(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                item_id TEXT,
-                job_type TEXT,
-                init_data INTEGER,
-                start_value TEXT,
-                end_value TEXT)''')
-    
     def get_tables(self):
-        retV = False
+        """returns the list of tables or None if something failed..."""
+        retV = None
         with self._lock:
             if self._is_open():
                 try:
@@ -196,21 +193,9 @@ class MyDb(MyLoggingBase):
                 except sql.Error as e:
                     self.logger.warning('failed!?!? %r',e)
         return retV
-    #===========================================================================
-    #=============================== JOB THINGS ================================
-    #===========================================================================
-    def iter_jobs(self):
-        # NOTE: this locks the db!!!
-        with self._lock:
-            if self._is_open():
-                try:
-                    with self._db as conn:
-                        for i in conn.execute('SELECT * FROM jobs'):
-                            yield i
-                except sql.Error as e:
-                    self.logger.warning('failed!?!? %r',e)
     
     def get_job_count(self):
+        """returns the number of jobs in the db."""
         retV = False
         with self._lock:
             if self._is_open():
@@ -221,47 +206,125 @@ class MyDb(MyLoggingBase):
                     self.logger.warning('counting jobs failed!?!? %r',e)
         return retV
     
+    def iter_jobs(self):
+        """iterate through all the jobs.  NOTE: this locks the db!!!"""
+        with self._lock:
+            if self._is_open():
+                try:
+                    with self._db as conn:
+                        for i in conn.execute('SELECT * FROM jobs'):
+                            yield i
+                except sql.Error as e:
+                    self.logger.warning('failed!?!? %r',e)
+    
+    #===========================================================================
+    # Initialize DB Structure (tables etc)
+    #===========================================================================
+    def _init_db_structure(self):
+        """creates job table. override to make the db more interesting!
+        This method is called only when a new db is created."""
+        with self._db as conn:
+            conn.execute('''
+                CREATE TABLE jobs(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_id TEXT,
+                job_type TEXT,
+                init_data INTEGER,
+                start_value TEXT,
+                end_value TEXT)''')
+        return True
+    #===========================================================================
+    #============================= 'Queue' Things ==============================
+    #===========================================================================
+    def _put_in_queue(self,job_type,item,wait=True):
+        self._queues[job_type].put(item,wait)
+    
+    def get_next_job(self,job_type,wait=True):
+        """get the next job that is job_type that hasn't been started by
+        another thread yet.  Returns the standard job tuple.  Raises
+        StopIteration if:
+            1. the queue was never created (no job_type added)
+            2. wait is false and the queue is empty
+        Params:
+            job_type: the type of the job
+            wiat=False: if we should wait for an item to be available to be put.
+        NOTES:
+            queues are thread-safe, so this method is too!
+        """
+        # check if the job_type is valid
+        if job_type not in self._queues:
+            self.logger.warning('no jobs with job_type=%s!',job_type)
+            raise StopIteration
+        
+        while True:
+            # try to get the next item
+            try: return self._queues[job_type].get(wait)
+            except Queue.Empty:
+                if not self.repopulate_queue(job_type):
+                    raise StopIteration
+    
     #===========================================================================
     # Populate Queues
     #===========================================================================
-    def populate_queues(self,queues):
-        """
-        populates queues with jobs but won't wait!
+    def repopulate_queue(self,job_type):
+        #TODO: repopulate_queue(self,job_type) sync issues... not possible with current design 
+        """put jobs into the queue.
+        returns whether items were put in the queue.
+        retV = False
+        with self._lock:
+            if self._is_open():
+                retV = True
+                # create the queue if needed
+                if job_type not in self._queues:
+                    self._queues[job_type] = Queue.Queue()
+                
+                # only add to it if it's empty
+                # NOTE: it is possible a thread is working on a job of this type
+                #       which means a job would be added that another thread is
+                #       working on...
+                if self._queues[job_type].empty():
+                    # populate!
+                    with self._db as conn:
+                        for row in conn.execute('SELECT * FROM jobs WHERE job_type=? ORDER BY start_value ASC',(job_type,)):
+                            try: self._queues[job_type].put_nowait(row)
+                            except Queue.Full: break
+                
+        return retV"""
+        return False
+    
+    def populate_queues(self):
+        """populates queues with jobs but won't wait!
         returns False if there was a problem querying the jobs table, True otherwise.
         """
         retV = True
         #c = 0
         with self._lock:
             if self._is_open():
-                for k in queues:
-                    # note: k is the job type
-                    # get a db connection to a list of the jobs
-                    try:
-                        with self._db as conn:
-                            job_list = conn.execute('SELECT id,item_id,init_data,start_value,end_value FROM jobs WHERE job_type=?',(k,))
-                    except sql.Error as e:
-                        self.logger.warning('populating queue=%s failed!?!? %r',k,e)
-                        retV = False
-                        continue
-                     
-                    # okay, now let's see if we can add them (the queues aren't full...
-                    for job in job_list: 
-                        try: queues[k].put(job,False)
-                        except Queue.Full:
-                            if self.__debug: self.logger.debug('queue is full, and I am not waiting!')
-                            break
-                        #else: c += 1
+                try:
+                    with self._db as conn:
+                        for row in conn.execute('SELECT * FROM jobs ORDER BY start_value ASC'):
+                            try: self._queues.setdefault(row[self._JOBS_JOB_TYPE],Queue.Queue()).put_nowait((row[self._JOBS_ID],
+                                                                                                             row[self._JOBS_ITEM_ID],
+                                                                                                             row[self._JOBS_INIT_DATA],
+                                                                                                             row[self._JOBS_START_VALUE],
+                                                                                                             row[self._JOBS_END_VALUE]))
+                            except Queue.Full: pass
+                            
+                        
+                except sql.Error as e:
+                    self.logger.warning('populating queues failed!?!? %r',e)
+                    retV = False
         
         return retV
-    
-    
+    #'''
+    #===========================================================================
+    #=============================== JOB THINGS ================================
+    #===========================================================================
     #===========================================================================
     # Add Job
     #===========================================================================
     def add_job(self,item_id,job_type,init_data=None):#,start_value=None,end_value=None):
-        """
-        adds job to list and returns job_id.  Returns False if failed to add!
-        """
+        """Adds job and returns job_id.  Returns None if failed to add!"""
         retV = False
         with self._lock:
             if self._is_open():
@@ -269,13 +332,11 @@ class MyDb(MyLoggingBase):
         return retV
     
     def _add_job(self,item_id,job_type,init_data=None):
-        '''
-        the non thread-safe way of adding a job...
-        '''
-        retV = False
+        """The non thread-safe way of adding a job... used internally."""
+        retV = None
         try:
             with self._db as conn:
-                # see if the jobs already there
+                #------ see if the jobs already there ------
                 add_to_db = True
                 #old_job_id = None # if we need to update the init_data
                 max_init_data = None
@@ -293,14 +354,26 @@ class MyDb(MyLoggingBase):
                             break
                         #else: pass # keep tracking jobs init_data to see if necessary to add
                 
-                # to update or not to update?
+                #------ to insert or not to insert? ------
                 # if we should and adding there are some new values to pull...
                 if add_to_db:
                     if init_data==None or init_data > max_init_data:
+                        #insert job into db
                         conn.execute('INSERT INTO jobs (item_id,job_type,init_data) values (?,?,?)',
                                      (item_id,job_type,init_data))
-                        retV = conn.execute('SELECT * FROM jobs WHERE item_id=? and job_type=? and start_value is null',
-                                            (item_id,job_type)).fetchone()[self._JOBS_ID]
+                        # selct job (to get job_id generated)
+                        retV = conn.execute('SELECT id,item_id,init_data FROM jobs WHERE item_id=? and job_type=? and start_value is null',
+                                            (item_id,job_type)).fetchone()
+                                            
+                        # add job to queue (create queue if needed)
+                        if job_type not in self._queues:
+                            self._queues[job_type] = Queue.Queue()
+                        try: self._queues[job_type].put_nowait(retV+(None,None))
+                        except Queue.Full: pass
+                        
+                        # only return the job id
+                        retV = retV[self._JOBS_ID]
+                        
                     else: self.logger.info('no need to add the job. jobs in the db will already get all of them...') 
                 else:
                     self.logger.warning("trying to add a job but it's already been added and not started/updated!")
@@ -313,7 +386,7 @@ class MyDb(MyLoggingBase):
                     #else:
         except sql.Error as e:
             self.logger.warning('added job failed! %r',e)
-            retV = False
+            retV = None
         #else: retV = t!=self._db.total_changes
         return retV
     
@@ -321,10 +394,8 @@ class MyDb(MyLoggingBase):
     # Update Job 
     #===========================================================================
     def update_job(self,job_id,start_value,end_value=None):
-        """
-        updates job with new data, start_value and end_value
-        Returns True for success
-        """
+        """updates job with new data, start_value and end_value
+        Returns True for success."""
         retV = False
         with self._lock:
             if self._is_open():
@@ -348,11 +419,9 @@ class MyDb(MyLoggingBase):
     #===========================================================================
     # Remove Job
     #===========================================================================
-    def remove_job(self,job_id):
-        """
-        removed job from the table.  Assuming b/c the job is done!
-        Returns True for success
-        """
+    def remove_job(self,job_id,job_type=None):
+        """Removed job from the table.  Assuming b/c the job is done!
+        Returns True for success."""
         retV = False
         with self._lock:
             if self._is_open():
@@ -363,7 +432,9 @@ class MyDb(MyLoggingBase):
                 except sql.Error as e:
                     self.logger.warning('removing job failed! %r',e)
                     retV = False
-                else: retV = t!=self._db.total_changes
+                else:
+                    self._queues[job_type].task_done()
+                    retV = t!=self._db.total_changes
                 
         return retV
     
@@ -371,8 +442,12 @@ class MyDb(MyLoggingBase):
     # Get Summary info
     #===========================================================================
     def _get_summary_info(self):
-        return ['total db changes: {:,}'.format(self._db.total_changes),
-                'jobs in jobs table: {:,}'.format(self.get_job_count())]
+        """useful for printing summary information.  Override (remember to call
+        the parent!) to add info to the summary (by calling _log_summary_info()."""
+        a = MyLoggingBase._get_summary_info(self)
+        a.extend(('total db changes: {:,}'.format(self._db.total_changes),
+                'jobs in jobs table: {:,}'.format(self.get_job_count())))
+        return a
 
 #===============================================================================
 # Main

@@ -16,18 +16,22 @@ class MyLoggingBase(object):
         .logger.warning # something's wrong, but skippable
         .logger.error # something's wrong and may break something later
         .logger.critical # something really bad happened! nuclear!
+    It also has _get_summary_info to override to supply summary info (by calling
+        self._log_summary_info()
     It also has some static timestamp things...
     """
     __version__ = '0.1.0'
-
     logger = None
-
+    
     def __init__(self,name=None):
         """name -- a str/unicode name of the logger (default: <class name>)"""
         object.__init__(self)
         self.logger = logging.getLogger(name if isinstance(name,(unicode,str))
                                         else self.__class__.__name__)
-
+    
+    #===========================================================================
+    # Logging 
+    #===========================================================================
     def set_logger_level(self,lvl):
         """Set the logging level for the class.  Returns True if set correctly."""
         if self.logger_set():
@@ -45,10 +49,26 @@ class MyLoggingBase(object):
         """Returns True if the .logger is set and there are handlers
         (somewhere to output to) for logging; False otherwise."""
         return (self.logger is not None and len(logging._handlers) != 0)
-
-    #========================================================================#
-    # Timestamp things
-    #========================================================================#
+    
+    #===========================================================================
+    # Summary
+    #===========================================================================
+    def _get_summary_info(self):
+        """override to add useful summary info."""
+        return []
+    
+    def _log_summary_info(self,prepend=''):
+        """call to log all important summary information."""
+        if prepend:
+            for i in self._get_summary_info():
+                self.logger.info('{!s}: {!s}'.format(prepend,i))
+        else:
+            for i in self._get_summary_info():
+                self.logger.info('{!s}'.format(i))
+    
+    #===========================================================================
+    # # Timestamp
+    #===========================================================================
     @staticmethod
     def get_current_timestamp(for_file=False):
         """Formats the current time (using datetime.datetime.now) to ISO 8601.
@@ -62,11 +82,11 @@ class MyLoggingBase(object):
     def get_current_datetime():
         """Helper function for getting the current datetime (datetime.now())"""
         return datetime.datetime.now()
-
+    
 #===============================================================================
 # Main
 #===============================================================================
 if __name__ == '__main__':
-    try: from tests import test_myloggingbase
+    try: import tests.test_myloggingbase
     except ImportError: print 'no test for myloggingbase'
-    else: test_myloggingbase.run_test()
+    else: tests.test_myloggingbase.run_test()

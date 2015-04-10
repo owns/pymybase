@@ -13,41 +13,193 @@ from mydb import MyDb
 # Test MyDb
 #===============================================================================
 class Test_MyDb(TestBase):
-    def test_io(self):
-        pass
-
+    
+    @staticmethod
+    def get_new_file_name():
+        import tempfile
+        import os.path
+        d = tempfile.mkdtemp()
+        fname = os.path.join(d,'aaa.db')
+        return d,fname
+    
+    @staticmethod
+    def remove_fd_file(fd,fname):
+        import os
+        if os.path.exists(fname): os.remove(fname)
+        if os.path.exists(fd): os.rmdir(fd)
+        
+    def test_io_new(self):
+        """test the .new functions"""
+        d,fname = self.get_new_file_name()
+        self.addCleanup(self.remove_fd_file,d,fname) # clean up
+        
+        # test new (memory)
+        a = MyDb()
+        self.assertTrue(a.new(':memory:'),msg='failed to create a in-memory db...')
+        a.close(); del a
+        
+        # test new
+        a = MyDb()
+        self.assertTrue(a.new(fname),msg='failed to create a new db...')
+        a.close(); del a
+        
+        # test new (with file already exists)
+        a = MyDb()
+        self.assertFalse(a.new(fname),msg="db was just created... shouldn't be able to create it again...")
+        a.close(); del a
+        
+    def test_io_open(self):
+        """test the .open function"""
+        d,fname = self.get_new_file_name()
+        self.addCleanup(self.remove_fd_file,d,fname) # clean up
+        
+        # test memory db
+        a = MyDb()
+        self.assertTrue(a.open(':memory:'),msg="db should've failed to be created...")
+        a.close(); del a
+        
+        # test open (create=False) == FASLE
+        a = MyDb()
+        self.assertFalse(a.open(fname,create=False),msg="db should've failed to be created...")
+        a.close(); del a
+        
+        # test open (create=True) & creates
+        a = MyDb()
+        self.assertTrue(a.open(fname,create=True),msg="db should've been created without errors...")
+        a.close(); del a
+        
+        # test open (create=False) == TRUE
+        a = MyDb()
+        self.assertTrue(a.open(fname,create=False),msg="db was created earlier and shouldn't of failed to open...")
+        a.close(); del a
+    
+    #===========================================================================
+    # Job Tests
+    #===========================================================================
+    def test_job_item(self):
+        """test that a job has the correct items (length/count)"""
+        a = MyDb(':memory:')
+        
+        job_id = a.add_job('1','main',3)
+        a.get_next_job('main', False) # emtpy queue
+        a.update_job(job_id,'start','end')
+        a.populate_queues() # re-populate
+        item = a.get_next_job('main', False) # now it'll be updated!
+        
+        self.assertEqual(item[a.JOB_ID],job_id,msg="job id isn't the same")
+        self.assertEqual(item[a.ITEM_ID],'1',msg="item id isn't the same")
+        self.assertEqual(item[a.INIT_DATA],3,msg="init_data isn't the same")
+        self.assertEqual(item[a.START_VALUE],'start',msg="start value isn't the same")
+        self.assertEqual(item[a.END_VALUE],'end',msg="end value isn't the same")
+        
+        a.close()
+    
     def test_adding_jobs(self):
-        pass
+        """test the db comments right away!"""
+        d,fname = self.get_new_file_name()
+        self.addCleanup(self.remove_fd_file,d,fname) # clean up
+        
+        a = MyDb(fname) # create db object
+        job_id = a.add_job('1','main',3) # add job
+        self.assertFalse(job_id is None, msg="Job should've been created w/o issue...")
     
     def test_update_jobs(self):
-        pass
+        """test that a job can be updated"""
+        a = MyDb(':memory:')
+        job_id = a.add_job('1','main',3)
+        self.assertTrue(a.update_job(job_id,'start','end'),msg="why didn't the job update???")
 
     def test_removing_jobs(self):
-        pass
+        """test that a job can be removed"""
+        a = MyDb(':memory:')
+        job_id = a.add_job('1','main',3)
+        a.get_next_job('main', False)
+        self.assertTrue(a.remove_job(job_id,'main'),msg="why wasn't it removed???")
 
-    def test_populate_queues(self):
-        pass
-
-    '''
-    def test_logger_name(self):
-        # test default name
-        self.assertEqual(MyLoggingBase().logger.name,'MyLoggingBase')
-        # test setting own name
-        self.assertEqual(MyLoggingBase('test name').logger.name,'test name')
-    
-    def test_get_current_timestamp(self):
-        # for file working???
-        s = MyLoggingBase().get_current_timestamp(for_file=True)
-        self.assertTrue(':' not in s,msg='this method must make the str appropriate for a filename')
-
-        # match standard?
-        import re
-        s = MyLoggingBase().get_current_timestamp(for_file=False)
-        re_s = '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{1,6}'
-        # e.g. '2015-04-06T18:30:21,344000'
-        self.assertNotEqual(re.match(re_s,s),None,msg='make sure the timestamp is in the correct format!')
-     '''  
-
+    def test_get_next_job(self):
+        """test that a job has the correct items (length/count)"""
+        a = MyDb(':memory:')
+        
+        job_id = a.add_job('1','main',3)
+        item = a.get_next_job('main', False) # now it'll be populated again!
+        self.assertTrue(isinstance(item,(list,tuple)),msg="item isn't a sequence...")
+        
+        self.assertEqual(item[a.JOB_ID],job_id,msg="job id isn't the same")
+        self.assertEqual(item[a.ITEM_ID],'1',msg="item id isn't the same")
+        self.assertEqual(item[a.INIT_DATA],3,msg="init_data isn't the same")
+        self.assertEqual(item[a.START_VALUE],None,msg="start value isn't the same")
+        self.assertEqual(item[a.END_VALUE],None,msg="end value isn't the same")
+        
+    #===========================================================================
+    # Recover Test
+    #===========================================================================
+    def test_db_recover(self):
+        """test the db comments right away 100 times!"""
+        import os
+        for i in xrange(30): # @UnusedVariable
+            d,fname = self.get_new_file_name()
+            
+            a = MyDb(fname) # create db object
+            job_id = a.add_job('1','main',3) # add job
+            a.get_next_job('main', False) # empty queue
+            a.update_job(job_id, "123","123456789") # update
+            #del a
+            
+            # was the job updated with that value???
+            a = MyDb(fname)
+            a.populate_queues()
+            try: item = a.get_next_job('main', False) # empty queue
+            except StopIteration: self.fail(str(i)+' no job found!?!!?!?!?!')
+            
+            self.assertEqual(item[a.JOB_ID],job_id,msg="job id isn't the same")
+            self.assertEqual(item[a.ITEM_ID],'1',msg="item id isn't the same")
+            self.assertEqual(item[a.INIT_DATA],3,msg="init_data isn't the same")
+            self.assertEqual(item[a.START_VALUE],'123',msg="start value isn't the same")
+            self.assertEqual(item[a.END_VALUE],'123456789',msg="end value isn't the same")
+            
+            a.close(); del a
+            
+            os.remove(fname); os.rmdir(d) # clean up
+            
+    #===========================================================================
+    # Multi-threaded
+    #===========================================================================
+    def test_multithreading(self):
+        """tests db with multiple threads..."""
+        import threading
+        import time
+        import logging
+        # create thead class that uses the db
+        class MyThread(threading.Thread):
+            _job_type = _db = None
+            def __init__(self,db,job_type='main'):
+                self._db, self._job_type = db, job_type
+                threading.Thread.__init__(self)
+            def run(self):
+                while True:
+                    try: item = self._db.get_next_job(self._job_type,False)
+                    except StopIteration: break
+                    logging.debug('processing item %02d of type %-4s',int(item[0]),self._job_type)
+                    time.sleep(1) # do something that takes some time...
+                    self._db.remove_job(item[0],self._job_type)
+        # init and fill db
+        db = MyDb(':memory:')
+        for i in xrange(30):
+            self.assertIsNot(db.add_job(str(i),'main' if i<11 else 'sub'),None,msg="job wasn't added..")
+        # create threads
+        threads = []
+        for i in xrange(10):
+            threads.append(MyThread(db,'main' if i<6 else 'sub'))
+            threads[-1].start()
+        # join threads
+        for thread in threads:
+            thread.join(10)
+            self.assertFalse(thread.isAlive(),'thread of type={} timed-out? took more than 10 sec???'.format(thread._job_type)) 
+        # check no jobs
+        job_count = db.get_job_count()
+        self.assertEqual(job_count,0,'there are {} jobs when there should be 0!'.format(job_count))
+        
+        
 #===============================================================================
 # Run Test
 #===============================================================================
@@ -60,3 +212,4 @@ def run_test():
 #===============================================================================
 if __name__ == '__main__':
     run_test()
+    
