@@ -120,7 +120,6 @@ class MyThread(MyLoggingBase,threading.Thread):
     #===========================================================================
     def run(self):
         """started when the thread does.  See threading.Thread for more."""
-        #TODO: finishe going through the class
         # see we can  initialize things...
         self._before_looping()
         
@@ -269,9 +268,11 @@ class MyThread(MyLoggingBase,threading.Thread):
     #===========================================================================
     def _get_summary_info(self):
         """override to add useful summary info."""
-        return ['jobs completed: {:,}'.format(self._jobs_completed),
+        a = MyLoggingBase._get_summary_info(self)
+        a.extend(['jobs completed: {:,}'.format(self._jobs_completed),
                 'last data: {}'.format(self.__current_job_start_v),
-                'total rows: {:,}'.format(self._total_rows)]
+                'total rows: {:,}'.format(self._total_rows)])
+        return a
     
     #===========================================================================
     #=========== Things that should be used when class is Inherited ============
@@ -282,16 +283,27 @@ class MyThread(MyLoggingBase,threading.Thread):
         and check if you've been told to stop - interrupted.  returns True if
         you've been interrupted, False otherwise."""
         self._update_start_value(start_value)
-        if self._check_for_interrupt(): return False
+        if self._check_for_interrupt(): return True
         else: self._update_if_needed()
-        return True
+        return False
     
     def _update_start_value(self,value):
+        """updates the start value for the current job.
+        NOTE: the db will be updated with this new info only if
+              _update_current_job is called
+              (_update_if_needed updates every self._update_interval)."""
         self.__current_job_start_v = value
     
+    def _update_end_value(self,value):
+        """updates the start value for the current job.
+        NOTE: the db will be updated with this new info only if
+              _update_current_job is called
+              (_update_if_needed updates every self._update_interval)."""
+        self.__current_job_end_v = value
+    
     def _check_for_interrupt(self):    
-        # see if we've been interrupted.
-        # saves and returns False If we've been interrupted
+        """Checks if we've been interrupted; if so, saves and returns True.
+        Returns False otherwise."""
         if self._interupt_process:
             self.logger.warning("we've been interrupted!")
             self._update_current_job()
@@ -299,7 +311,7 @@ class MyThread(MyLoggingBase,threading.Thread):
         else: return False
         
     def _update_if_needed(self):
-        # update periodically
+        """updates the db if needed (self._update_interval time has passed)."""
         if time.clock() - self.__job_updated_time > self._update_interval:
             self._update_current_job()
                
@@ -317,18 +329,20 @@ class MyThread(MyLoggingBase,threading.Thread):
     # Waiting Wrap
     #===========================================================================
     def _before_waiting(self,first_time_waiting=True):
-        """call before doing a wait. updates job status (in the db) if needed.""" 
+        """call before doing a wait. updates job status (in the db) if needed
+        it's the first time waiting.""" 
         if first_time_waiting: self._update_current_job() 
     
     def _after_waiting(self):
-        """call method after doing a wait."""
-        self.__job_updated_time = time.clock() # updated job_updated time so we don't update more than needed
+        """call method after doing a wait. It updates the job updated time
+        so we don't update more than needed."""
+        self.__job_updated_time = time.clock()
                  
     #===========================================================================
     #=============================== Job Things ================================
     #===========================================================================
     def _complete_job(self):
-        """Tell the db the job is finished/complete and flush files"""
+        """Tells the db the job is finished/complete and flush files"""
         #if there is a job being worked on...
         if self.__current_job_id is not None:
             # updated db
@@ -341,7 +355,8 @@ class MyThread(MyLoggingBase,threading.Thread):
     # Update Job    
     #===========================================================================
     def _update_current_job(self):
-        """updates the current job with start_value and end_value if not None."""
+        """updates the current job with start_value and end_value
+        and flushes the files files (see self._flush_files()."""
         self.logger.info('updating job %s with data %r',self.__current_job_id,
                          self.__current_job_start_v)
         
@@ -366,8 +381,9 @@ class MyThread(MyLoggingBase,threading.Thread):
     # Add Job
     #===========================================================================
     def _add_job(self,item_id,job_type,init_data=None,*args, **keys):
-        """
-        params:
+        """Add a job need to be done to the database.  Returns True if
+        the job is successfully added, false otherwise (and logs). 
+        param:
             item_id: the item to get the job needs to be done for
                 NOTE: item_id,job_type is the unique composite key.
             job_type: the job that needs to be done
@@ -376,12 +392,15 @@ class MyThread(MyLoggingBase,threading.Thread):
                 determine if adding the job is necessary.  None means it's
                 necessary.  
         """
-        # add job to db and get job_id...
+        # add job to db and get job_id
         job_id = self._db.add_job(item_id,job_type,init_data)
         
         # log if the job failed to be added
-        if job_id is None: self.logger.error('failed to add job %s,%s,%s',
-                                             item_id,job_type,init_data)
+        if job_id is None:
+            self.logger.error('failed to add job %s,%s,%s',
+                              item_id,job_type,init_data)
+            return False
+        else: return True
 
 
 #===============================================================================
