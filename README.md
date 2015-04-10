@@ -2,6 +2,7 @@
 
 This is more an set of base classes helpful for doing things.  These classes are used through several projects to simplify things.
 Enjoy.
+hello world
 
 ### What is this repository for? ###
 
