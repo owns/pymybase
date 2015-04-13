@@ -18,6 +18,8 @@ class MyThread(MyLoggingBase,threading.Thread):
     Read the docs for each method for more details.    
     """
     
+    # TODO: system to tell if the thread broke or not...
+    
     _total_rows = None
     _jobs_completed = None
     
@@ -140,24 +142,24 @@ class MyThread(MyLoggingBase,threading.Thread):
                     # someone is telling us to stop!
                     #======================== INTERRUPT ========================
                     if item == self._CTRL_INTERRUPT:
-                        if self.__debug: self.logger.debug("I've been told to stop now... interrupted... okay")
+                        self.logger.debug("I've been told to stop now... interrupted... okay")
                         self._continue_looping = False # don't get more things..
                         self._db.put_in_queue(self.get_job_type(),item,True) # let others know
                     #=========================== JOB ===========================
                     elif item == self._CTRL_JOB:
-                        if self.__debug: self.logger.debug("I'm been told to stop when I'm done with my job... that's now. Okay")
+                        self.logger.debug("I'm been told to stop when I'm done with my job... that's now. Okay")
                         self._continue_looping = False # don't get more things..
                         self._db.put_in_queue(self.get_job_type(),item,True) # let others know
                     #========================== QUEUE ==========================
                     elif item == self._CTRL_QUEUE:
-                        if self.__debug: self.logger.debug("I've been told to stop when the queue is empty... okay")
+                        self.logger.debug("I've been told to stop when the queue is empty... okay")
                         self._continue_waiting = False
                     #========================= WAKE UP =========================
                     elif item == self._CTRL_WAKE_UP:
-                        if self.__debug: self.logger.debug("I've been told to wake up... okay.")
+                        self.logger.debug("I've been told to wake up... okay.")
                     #========================= IDK... ==========================
                     else:
-                        if self.__debug: self.logger.debug("I've been told to stop with %d... i don't know what that means.... I'm ignoring it",item)
+                        self.logger.debug("I've been told to stop with %d... i don't know what that means.... I'm ignoring it",item)
                         #self._continue_looping = False
                 else:
                     # start the job
@@ -196,13 +198,13 @@ class MyThread(MyLoggingBase,threading.Thread):
                         self._complete_job() # flush files and update db
                         self._jobs_completed += 1 # track number of jobs
                         # log stats
-                        if self.__debug: self.logger.debug('job %s completed, %03d rows, %f seconds',
+                        self.logger.debug('job %s completed, %03d rows, %f seconds',
                                                            job_id,rows,job_end_time-job_start_time)
                     else:
                         self._update_current_job()
                         self.__current_job_id = None
                         # log stats
-                        if self.__debug: self.logger.debug('job %s failed, %03d rows, %f seconds',
+                        self.logger.debug('job %s failed, %03d rows, %f seconds',
                                                            job_id,rows,job_end_time-job_start_time)
         
         # to stop when the queue is empty if that message was passed...!

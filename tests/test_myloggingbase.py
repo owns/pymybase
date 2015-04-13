@@ -40,14 +40,15 @@ class Test_MyLoggingBase(TestBase):
         a.logger.warning('hello world')
         a.logger.error('hello world')
         a.logger.critical('hello world')
-                
-        
+
 #===============================================================================
 # Run Test
 #===============================================================================
 def run_test():
+    import os; os.chdir('..')
     import unittest
-    unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(Test_MyLoggingBase)
+    unittest.TextTestRunner().run(suite)
 
 #===============================================================================
 # Main

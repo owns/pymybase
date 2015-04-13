@@ -7,11 +7,11 @@ test classes for pymybase
 import testbase
 import test_mydb
 import test_myloggingbase
-from tests import test_myjsonflattener
+from tests import test_myjson2csv
 import test_mythread
 
 __all__ = ['test_myloggingbase','test_mydb','test_mythread',
-           'test_myjsonflattener']
+           'test_myjson2csv']
 
 def run_test():
     import unittest

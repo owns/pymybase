@@ -13,25 +13,9 @@ from mydb import MyDb
 # Test MyDb
 #===============================================================================
 class Test_MyDb(TestBase):
-    
-    @staticmethod
-    def get_new_file_name():
-        import tempfile
-        import os.path
-        d = tempfile.mkdtemp()
-        fname = os.path.join(d,'aaa.db')
-        return d,fname
-    
-    @staticmethod
-    def remove_fd_file(fd,fname):
-        import os
-        if os.path.exists(fname): os.remove(fname)
-        if os.path.exists(fd): os.rmdir(fd)
-        
     def test_io_new(self):
         """test the .new functions"""
-        d,fname = self.get_new_file_name()
-        self.addCleanup(self.remove_fd_file,d,fname) # clean up
+        fname = self.get_new_file_name('aaa.db')
         
         # test new (memory)
         a = MyDb()
@@ -50,8 +34,7 @@ class Test_MyDb(TestBase):
         
     def test_io_open(self):
         """test the .open function"""
-        d,fname = self.get_new_file_name()
-        self.addCleanup(self.remove_fd_file,d,fname) # clean up
+        fname = self.get_new_file_name('aaa.db')
         
         # test memory db
         a = MyDb()
@@ -96,8 +79,7 @@ class Test_MyDb(TestBase):
     
     def test_adding_jobs(self):
         """test the db comments right away!"""
-        d,fname = self.get_new_file_name()
-        self.addCleanup(self.remove_fd_file,d,fname) # clean up
+        fname = self.get_new_file_name('aaa.db')
         
         a = MyDb(fname) # create db object
         job_id = a.add_job('1','main',3) # add job
@@ -135,9 +117,8 @@ class Test_MyDb(TestBase):
     #===========================================================================
     def test_db_recover(self):
         """test the db comments right away 100 times!"""
-        import os
         for i in xrange(30): # @UnusedVariable
-            d,fname = self.get_new_file_name()
+            fname = self.get_new_file_name('aaa.db')
             
             a = MyDb(fname) # create db object
             job_id = a.add_job('1','main',3) # add job
@@ -158,8 +139,6 @@ class Test_MyDb(TestBase):
             self.assertEqual(item[a.END_VALUE],'123456789',msg="end value isn't the same")
             
             a.close(); del a
-            
-            os.remove(fname); os.rmdir(d) # clean up
             
     #===========================================================================
     # Multi-threaded
@@ -204,8 +183,10 @@ class Test_MyDb(TestBase):
 # Run Test
 #===============================================================================
 def run_test():
+    import os; os.chdir('..')
     import unittest
-    unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(Test_MyDb)
+    unittest.TextTestRunner().run(suite)
 
 #===============================================================================
 # Main

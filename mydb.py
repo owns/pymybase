@@ -236,7 +236,7 @@ class MyDb(MyLoggingBase):
     #===========================================================================
     #============================= 'Queue' Things ==============================
     #===========================================================================
-    def _put_in_queue(self,job_type,item,wait=True):
+    def put_in_queue(self,job_type,item,wait=True):
         self._queues[job_type].put(item,wait)
     
     def get_next_job(self,job_type,wait=True):
@@ -361,6 +361,8 @@ class MyDb(MyLoggingBase):
                         #insert job into db
                         conn.execute('INSERT INTO jobs (item_id,job_type,init_data) values (?,?,?)',
                                      (item_id,job_type,init_data))
+                        self._jobs_added_count += 1
+                        
                         # selct job (to get job_id generated)
                         retV = conn.execute('SELECT id,item_id,init_data FROM jobs WHERE item_id=? and job_type=? and start_value is null',
                                             (item_id,job_type)).fetchone()
@@ -409,6 +411,8 @@ class MyDb(MyLoggingBase):
                             # they provided an end_value
                             conn.execute('UPDATE jobs set start_value=?,end_value=? WHERE id=?',
                                          (start_value,end_value,job_id))
+                            
+                        self._jobs_updated_count += 1
                 except sql.Error as e:
                     self.logger.warning('updating job failed! %r',e)
                     retV = False
@@ -446,7 +450,9 @@ class MyDb(MyLoggingBase):
         the parent!) to add info to the summary (by calling _log_summary_info()."""
         a = MyLoggingBase._get_summary_info(self)
         a.extend(('total db changes: {:,}'.format(self._db.total_changes),
-                'jobs in jobs table: {:,}'.format(self.get_job_count())))
+                'jobs in jobs table: {:,}'.format(self.get_job_count()),
+                'jobs added: {:,}'.format(self._jobs_added_count),
+                'jobs updated: {:,}'.format(self._jobs_updated_count)))
         return a
 
 #===============================================================================
