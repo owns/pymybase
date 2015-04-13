@@ -293,7 +293,6 @@ class MyJSON2CSV(MyLoggingBase):
         # add row number if requested!
         self._cur_row_num += 1
         if self._add_row_num:
-            #json_obj = json_obj.copy()
             json_obj[self._row_num_header_name] = self._cur_row_num
         
         # write the row!!!

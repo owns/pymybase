@@ -32,9 +32,8 @@ class Test_MyJSON2CSV(TestBase):
         fname = self.get_new_file_name('aaa.csv')
         a = MyJSON2CSV(fname)
         a.set_headers('k','a','b','c','d.a','d.b','e')
-        d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3])
         for i in xrange(100):
-            d['k'] = i
+            d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
             a.write_json_object(d)
         self.assertEqual(len(a._missed_headers),0,'the wrong number of fields were determined to be missed {}'.format(a._missed_headers))
         a.close(); del a
@@ -44,7 +43,6 @@ class Test_MyJSON2CSV(TestBase):
         fname = self.get_new_file_name('aaa.csv')
         a = MyJSON2CSV(fname)
         a.set_headers('k','b','c','d.a','d.b','e')
-        
         for i in xrange(100):
             d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
             a.write_json_object(d)
@@ -57,9 +55,8 @@ class Test_MyJSON2CSV(TestBase):
         """test the class determining what the heads are (with all the same keys)."""
         fname = self.get_new_file_name('aaa.csv')
         a = MyJSON2CSV(fname)
-        d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3])
         for i in xrange(100):
-            d['k'] = i
+            d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
             a.write_json_object(d)
         self.assertEqual(len(a._missed_headers),0,'no fields should be missed')
         a.close(); del a
@@ -72,7 +69,7 @@ class Test_MyJSON2CSV(TestBase):
         d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3])
         for i in xrange(100):
             a.write_json_object(d)
-            d['k'] = i
+            d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
         
         self.assertIn('k',a._missed_headers,'MyJSON2CSV failed to discover key k is missing from the csv')
         self.assertEqual(len(a._missed_headers),1,'only one field should be missed')
@@ -83,9 +80,8 @@ class Test_MyJSON2CSV(TestBase):
         fname = self.get_new_file_name('aaa.csv')
         a = MyJSON2CSV(fname)
         a.add_row_number(self)
-        d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3])
         for i in xrange(100):  # @UnusedVariable
-            d['k'] = i
+            d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
             a.write_json_object(d)
             
         self.assertEqual(a._cur_row_num,100,'there should have only been 100 rows written...')
