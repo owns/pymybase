@@ -7,3 +7,6 @@ from myloggingbase import MyLoggingBase
 from mydb import MyDb
 
 __all__ = ['MyLoggingBase','MyDb']
+
+#TODO: fix me
+#TODO: fix README.md
