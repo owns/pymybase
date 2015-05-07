@@ -7,6 +7,7 @@ a class for simplifying flattening json (dict) objects - not just top level!
 import os
 from csv import writer as csv_writer
 from json import loads as json_loads
+from json import dumps as json_dumps
 from decimal import Decimal
 
 from myloggingbase import MyLoggingBase
@@ -38,6 +39,8 @@ class MyJSON2CSV(MyLoggingBase):
     #TODO: add check if we've missing anything (only top lvl atm)!
     #TODO: add ability to handle lists!
     #TODO: add ability to set defaults for columns
+    #TODO: add ability to have lambda columns - functions!
+    #TODO: flatten lists!
     _filename = None
     _headers = None
     _top_level_headers = None
@@ -381,7 +384,8 @@ class MyJSON2CSV(MyLoggingBase):
         # dict
         elif isinstance(value, dict):
             if value: # non-empty
-                return ','.join(self._removeNonASCII(k)+':'+self._removeNonASCII(v) for k,v in value.iteritems())
+                return self._removeNonASCII(json_dumps(value))
+                #return ','.join(self._removeNonASCII(k)+':'+self._removeNonASCII(v) for k,v in value.iteritems())
             else: return ''
         # list
         elif isinstance(value,(list,tuple)):
@@ -405,7 +409,17 @@ class MyJSON2CSV(MyLoggingBase):
         return csv_writer(open_file,delimiter=self._sep,quotechar='"',
                           doublequote=True,skipinitialspace=True)
 
-
+    #===========================================================================
+    # get summary info
+    #===========================================================================
+    def _get_summary_info(self):
+        a = MyLoggingBase._get_summary_info(self)
+        a.extend(('file: {}'.format(self._filename),
+                 'rows: {:,}'.format(self._cur_row_num)))
+        
+        return a
+    
+    
 #===============================================================================
 # Main
 #===============================================================================

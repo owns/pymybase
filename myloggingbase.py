@@ -22,8 +22,11 @@ class MyLoggingBase(object):
     It also has some static timestamp things...
     NOTE: get_output_fd & get_resource_fd use cwd!
     """
-    __version__ = '0.1.0'
+    __version__ = '0.1.1'
+    _TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S,%f'
     logger = None
+    
+    
     
     def __init__(self,name=None):
         """name -- a str/unicode name of the logger (default: <class name>)"""
@@ -53,9 +56,9 @@ class MyLoggingBase(object):
         return (self.logger is not None and len(logging._handlers) != 0)
     
     @staticmethod
-    def _init_logging(**keys):
+    def init_logging(**keys):
         """
-        file_log_name=None  # name of log file
+        file_log_name=None  # name of log file (defaults to output dir)
         file_log_lvl='DEBUG'  # level to log in file (None to not log to file)
         console_log_lvl='DEBUG'  # level to log to console
         show_warning=True # show warning for not writing to the file or console.
@@ -112,7 +115,7 @@ class MyLoggingBase(object):
             logging.warning('=======================================')
         '''
         # necessary import for exception hooking
-        # log all exceptions!
+        # log all myexceptions!
         def exception_hook(exctype, exc, tb):
             #this method just handles the output, not raising the error... 
             logging.critical('\n'+''.join(traceback.format_tb(tb)))
@@ -127,13 +130,13 @@ class MyLoggingBase(object):
     @staticmethod
     def get_resource_fd(filename=None):
         """pass a filename to join with the resource folder"""
-        dir_name = os.path.join(os.path.dirname(''),'resources') #__file__
+        dir_name = os.path.join(os.path.realpath(''),'resources') #__file__
         return MyLoggingBase.join_folder_and_file(dir_name,filename)
     
     @staticmethod
     def get_output_fd(filename=None):
         """pass a filename to join with the output folder"""
-        dir_name = os.path.join(os.path.dirname(''),'output') #__file__
+        dir_name = os.path.join(os.path.realpath(''),'output') #__file__
         return MyLoggingBase.join_folder_and_file(dir_name,filename)
     
     @staticmethod
@@ -163,18 +166,28 @@ class MyLoggingBase(object):
     # # Timestamp
     #===========================================================================
     @staticmethod
-    def get_current_timestamp(for_file=False):
-        """Formats the current time (using datetime.datetime.now) to ISO 8601.
-        ForFile -- if True, replaces colons with periods."""
-        if for_file: s = '%Y-%m-%dT%H.%M.%S,%f'
-        else: s = '%Y-%m-%dT%H:%M:%S,%f'
-        # only accurate to 3 for win8.1, but 6 given (for after sec)
-        return MyLoggingBase.get_current_datetime().strftime(s)
+    def get_current_datetime(utc=False):
+        """Helper function for getting the current datetime.
+        param utc: If False, returns the time based on the current timezone.
+                   If True, returns the UTC time."""
+        if utc: datetime.datetime.utcnow()
+        else: return datetime.datetime.now()
     
     @staticmethod
-    def get_current_datetime():
-        """Helper function for getting the current datetime (datetime.now())"""
-        return datetime.datetime.now()
+    def datetime_to_timestamp(dt,for_file=False):
+        """Formats the datetime passed to ISO 8601 string.
+        for_file -- if True, replaces colons with periods."""
+        s = (MyLoggingBase._TIMESTAMP_FORMAT.replace(':','.') if for_file
+             else MyLoggingBase._TIMESTAMP_FORMAT)
+        
+        # only accurate to 3 for win8.1, but 6 given (for after sec)
+        return dt.strftime(s)
+    
+    @staticmethod
+    def get_current_timestamp(for_file=False,utc=False):
+        """Formats the current time (using datetime.datetime.now) to ISO 8601.
+        for_file -- if True, replaces colons with periods."""
+        return MyLoggingBase.datetime_to_timestamp(MyLoggingBase.get_current_datetime(utc),for_file)
     
 #===============================================================================
 # Main

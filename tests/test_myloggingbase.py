@@ -41,6 +41,14 @@ class Test_MyLoggingBase(TestBase):
         a.logger.error('hello world')
         a.logger.critical('hello world')
 
+    def test_get_folders(self):
+        """test resources and output folder getting"""
+        #TODO: complete me: test_get_folders
+        self.fail('not implemented')
+        
+        
+        
+
 #===============================================================================
 # Run Test
 #===============================================================================

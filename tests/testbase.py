@@ -9,6 +9,7 @@ import logging
 import sys
 if '..' not in sys.path: sys.path.append('..')
 from myloggingbase import MyLoggingBase
+import os.path
 
 #===============================================================================
 # Base Test Class
@@ -26,12 +27,28 @@ class TestBase(unittest.TestCase,MyLoggingBase):
         
     def setUp(self):
         """init logging for testing - no file"""
-        self._init_logging(file_log_lvl=None,console_log_lvl='DEBUG',
-                           show_warning=False)
+        self.init_logging(file_log_lvl=None,console_log_lvl='DEBUG',
+                          show_warning=False)
 
     def tearDown(self):
         """close logging & whatever else is needed..."""
         logging.shutdown() # clean up!
+    
+    #===========================================================================
+    # Override getting folders to handle being in /tests
+    #===========================================================================
+    @staticmethod
+    def get_resource_fd(filename=None):
+        """pass a filename to join with the resource folder"""
+        dir_name = os.path.join(os.path.realpath('..'),'resources') #__file__
+        return MyLoggingBase.join_folder_and_file(dir_name,filename)
+    
+    @staticmethod
+    def get_output_fd(filename=None):
+        """pass a filename to join with the output folder"""
+        dir_name = os.path.join(os.path.realpath('..'),'output') #__file__
+        return MyLoggingBase.join_folder_and_file(dir_name,filename)
+    
     
     #===========================================================================
     # Generate temporary new files

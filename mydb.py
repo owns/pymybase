@@ -237,6 +237,8 @@ class MyDb(MyLoggingBase):
     #============================= 'Queue' Things ==============================
     #===========================================================================
     def put_in_queue(self,job_type,item,wait=True):
+        if job_type not in self._queues:
+            self._queues[job_type] = Queue.Queue()
         self._queues[job_type].put(item,wait)
     
     def get_next_job(self,job_type,wait=True):
@@ -363,6 +365,7 @@ class MyDb(MyLoggingBase):
                                      (item_id,job_type,init_data))
                         self._jobs_added_count += 1
                         
+                        #TODO: you can just use conn.lastrowid!!!!
                         # selct job (to get job_id generated)
                         retV = conn.execute('SELECT id,item_id,init_data FROM jobs WHERE item_id=? and job_type=? and start_value is null',
                                             (item_id,job_type)).fetchone()
