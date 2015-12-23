@@ -4,6 +4,7 @@ Elias Wood (owns13927@yahoo.com)
 unit test for myjson2csv
 """
 import sys
+import os
 if '..' not in sys.path: sys.path.append('..')
 from myjson2csv import MyJSON2CSV
 from testbase import TestBase
@@ -88,7 +89,7 @@ class Test_MyJSON2CSV(TestBase):
         a.close(); del a
     
     def test_bare_writing(self):
-        """best the writerow directly feature"""
+        """test the writerow directly feature"""
         fname = self.get_new_file_name('aaa.csv')
         a = MyJSON2CSV(fname)
         a.add_row_number(self)
@@ -99,6 +100,45 @@ class Test_MyJSON2CSV(TestBase):
         self.assertEqual(a._cur_row_num,100,'there should have only been 100 rows written...')
         self.assertIn(MyJSON2CSV._row_num_header_name,a._headers,'auto gen number failed to be added')
         a.close(); del a
+    
+    def test_custom_header_object(self):
+        """test using custom header objects instead of just keys!"""
+        fname = self.get_new_file_name('aaa.csv')
+        a = MyJSON2CSV(fname)
+        
+        def key_fn(key,value,default):
+            return '{} - {}'.format(value,3)
+        
+        def dict_fn(d,default): return 'hello'
+        
+        a.set_headers(dict(key='b',name='b+',default='hello'),
+                      dict(key='b',name='key_fn',key_fn=key_fn)
+                      ,'a',dict(name='dict_fn',dict_fn=dict_fn))
+        
+        for i in xrange(0,10):
+            a.write_json_object(dict(a=i,b=i+1))
+        
+        a.close(); del a
+        
+        # test the file was written correctly
+        with open(fname,'r') as r:
+            # headers
+            self.assertEqual(r.next().rstrip(),'b+,key_fn,a,dict_fn',
+                             'column headers where not set correctly')
+            # rows
+            c = 0
+            for line in r:
+                self.assertEqual(line.rstrip(),
+                                 '{0},{0} - 3,{1},hello'.format(c+1,c),
+                                 'incorrect row - '+str(c+1))
+                c += 1
+        
+        #nfname =  os.path.join(os.environ['USERPROFILE'],"Desktop",
+        #                       os.path.basename(fname))
+        #try: os.remove(nfname)
+        #except IOError: pass
+        #os.rename(fname,nfname)
+        
         
 #===============================================================================
 # Run Test

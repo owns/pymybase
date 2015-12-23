@@ -17,18 +17,18 @@ class MyLoggingBase(object):
         .logger.warning # something's wrong, but skippable
         .logger.error # something's wrong and may break something later
         .logger.critical # something really bad happened! nuclear!
-    It also has _get_summary_info to override to supply summary info (by calling
-        self._log_summary_info()
+    It also has get_summary_info to override to supply summary info (by calling
+        self.log_summary_info())
     It also has some static timestamp things...
     NOTE: get_output_fd & get_resource_fd use cwd!
     """
-    __version__ = '0.1.1'
-    _TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S,%f'
+    __version__ = '0.2.0'
+    _TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
     logger = None
     
     
     
-    def __init__(self,name=None):
+    def __init__(self,name=None,*args,**keys):
         """name -- a str/unicode name of the logger (default: <class name>)"""
         object.__init__(self)
         self.logger = logging.getLogger(name if isinstance(name,(unicode,str))
@@ -80,14 +80,14 @@ class MyLoggingBase(object):
         # set logging level
         logging.getLogger().setLevel(logging.DEBUG)
             
-        # create logging formatter
-        f = '%(asctime)s,%(msecs)-3d:%(threadName)-10s:%(levelname)-7s:%(name)s.%(funcName)s:%(message)s'
+        # create logging formatter .%(msecs)-3d
+        f = '%(asctime)-23s:%(threadName)-10s:%(levelname)-7s:%(name)s.%(funcName)s:%(message)s'
         log_formatter = logging.Formatter(f)
             
         # create handlers based on request
         if file_log_lvl:
             # add file handler
-            if file_log_name==None: file_log_name = MyLoggingBase.get_output_fd('log{}.log'.format(MyLoggingBase.get_current_timestamp(True)))
+            if file_log_name==None: file_log_name = MyLoggingBase.get_output_fd('log{}.log'.format(MyLoggingBase.get_current_timestamp(for_file=True)))
             h = logging.FileHandler(file_log_name)#,mode='w') #to not append for the day
             h.setLevel(logging.__getattribute__(file_log_lvl)) # @UndefinedVariable
             h.setFormatter(log_formatter)
@@ -123,6 +123,42 @@ class MyLoggingBase(object):
         sys.excepthook = exception_hook
         '''
     
+    #===========================================================================
+    # static method for filling a dict with Nones where needed...
+    #===========================================================================
+    @staticmethod
+    def fill_dict(d,keys,val=None,**updates):
+        """
+        fills the dictionary (d) with None for each key in keys.
+        val: what to fill the each key with.
+        After filling, d is updated by updates (d.update(updates))
+        returns the filled dict (not a copy).
+        NOTE: for sub-dict values needed, key.skey.... --> d[key][skey]...
+        NOTE: this means a key of 'key.name' is invalid!!!
+        """
+        for key in keys: MyLoggingBase._fill_dict(d,key,val)
+        d.update(updates)
+        return d
+        
+    @staticmethod
+    def _fill_dict(d,key,val):
+        """
+        helper function to populate individual key.
+        d: a dictionary
+        key: a string
+        val: the default value
+        """
+        a = key.find('.')
+        if a == -1:
+            d.setdefault(key,val)
+        else:
+            if d.get(key[:a]) is None: d[key[:a]] = dict()
+            
+            if not isinstance(d[key[:a]],dict):
+                raise ValueError('the key {!r} is invalid. top value is type {}, not a dict!'.format(key,type(d[key[:a]])))
+            
+            MyLoggingBase._fill_dict(d[key[:a]],key[a+1:],val)
+    
     #===============================================================================
     # get/join with project folders
     #===============================================================================
@@ -150,10 +186,18 @@ class MyLoggingBase(object):
     # Summary
     #===========================================================================
     def _get_summary_info(self):
+        """deprecated"""
+        return self.get_summary_info()
+    
+    def get_summary_info(self):
         """override to add useful summary info."""
         return []
     
-    def _log_summary_info(self,prepend=''):
+    def _log_summary_info(self,*args,**keys):
+        """deprecated"""
+        self.log_summary_info(*args,**keys)
+    
+    def log_summary_info(self,prepend=''):
         """call to log all important summary information."""
         if prepend:
             for i in self._get_summary_info():
@@ -162,37 +206,52 @@ class MyLoggingBase(object):
             for i in self._get_summary_info():
                 self.logger.info('{!s}'.format(i))
     
+    
     #===========================================================================
     # # Timestamp
     #===========================================================================
     @staticmethod
-    def get_current_datetime(utc=False):
+    def get_current_datetime(utc=False,add_sec=0):
         """Helper function for getting the current datetime.
         param utc: If False, returns the time based on the current timezone.
                    If True, returns the UTC time."""
-        if utc: datetime.datetime.utcnow()
-        else: return datetime.datetime.now()
+        d = datetime.datetime.utcnow() if utc else datetime.datetime.now()
+        if add_sec: return d+datetime.timedelta(seconds=add_sec)
+        else: return d
     
     @staticmethod
-    def datetime_to_timestamp(dt,for_file=False):
+    def datetime_to_timestamp(dt,for_file=False,dt_format=None,add_sec=0):
         """Formats the datetime passed to ISO 8601 string.
         for_file -- if True, replaces colons with periods."""
-        s = (MyLoggingBase._TIMESTAMP_FORMAT.replace(':','.') if for_file
-             else MyLoggingBase._TIMESTAMP_FORMAT)
+        if dt_format is None: dt_format = MyLoggingBase._TIMESTAMP_FORMAT
+        s = (dt_format.replace(':','.') if for_file else dt_format)
         
+        if add_sec: dt += datetime.timedelta(seconds=add_sec)
         # only accurate to 3 for win8.1, but 6 given (for after sec)
         return dt.strftime(s)
     
     @staticmethod
-    def get_current_timestamp(for_file=False,utc=False):
+    def get_current_timestamp(utc=False,add_sec=0,
+                              for_file=False,dt_format=None):
         """Formats the current time (using datetime.datetime.now) to ISO 8601.
         for_file -- if True, replaces colons with periods."""
-        return MyLoggingBase.datetime_to_timestamp(MyLoggingBase.get_current_datetime(utc),for_file)
+        return MyLoggingBase.datetime_to_timestamp(
+                    MyLoggingBase.get_current_datetime(utc=utc,add_sec=add_sec),
+                    for_file=for_file,dt_format=dt_format)
     
 #===============================================================================
 # Main
 #===============================================================================
 if __name__ == '__main__':
-    try: import tests.test_myloggingbase
-    except ImportError: print 'no test for myloggingbase'
-    else: tests.test_myloggingbase.run_test()
+    #try: import tests.test_myloggingbase
+    #except ImportError: print 'no test for myloggingbase'
+    #else: tests.test_myloggingbase.run_test()
+    MyLoggingBase.init_logging(file_log_lvl=None)
+    a = MyLoggingBase()
+    
+    a.logger.info('hello world')
+    
+    
+    
+    
+    

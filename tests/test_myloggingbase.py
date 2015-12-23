@@ -8,6 +8,57 @@ if '..' not in sys.path: sys.path.append('..')
 from myloggingbase import MyLoggingBase
 from testbase import TestBase
 
+#TODO: add test for fill_dict
+'''
+MyLoggingBase.init_logging(file_log_lvl = None)
+from pprint import pprint
+d = dict(id=123)
+ad_group_keys = ('account_id','id',
+                 'creative.object_story_id',
+                 'creative.object_type',
+                 'adgroup_review_feedback',
+                 'adgroup_status','bid_type',
+                 'bid_info.IMPRESSIONS',
+                 'bid_info.CLICKS',
+                 'bid_info.REACH',
+                 'bid_info.SOCIAL',
+                 'bid_info.ACTIONS',
+                 'campaign_id',
+                 'conversion_specs','created_time',
+                 'failed_delivery_checks',
+                 'name',
+                 'targeting',
+                 'targeting.genders',
+                 'targeting.age_min',
+                 'targeting.age_max',
+                 'targeting.geo_locations.countries',
+                 'targeting.geo_locations.regions',
+                 'targeting.geo_locations.cities',
+                 'targeting.geo_locations.zips',
+                 'targeting.geo_locations.custom_locations',
+                 'targeting.geo_locations.geo_markets',
+                 'targeting.geo_locations.location_types',
+                 'targeting.custom_audiences',
+                 'targeting.flexible_spec',
+                 'targeting.page_types',
+                 'targeting.user_adclusters',
+                 'tracking_specs','updated_time','insight_objective',
+                 'insight_performance_indicator','extracted_dt')
+
+
+print 'd',len(d),d
+print 'desire',len(ad_group_keys),ad_group_keys
+
+MyLoggingBase.fill_dict(d,ad_group_keys)
+
+print 'after'
+print 'd',len(d)
+pprint(d)
+
+print 'desire',len(ad_group_keys)
+pprint(ad_group_keys)
+'''
+
 #===============================================================================
 # Test MyLoggingBase
 #===============================================================================

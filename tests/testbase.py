@@ -18,6 +18,9 @@ class TestBase(unittest.TestCase,MyLoggingBase):
     """
     base class for unit testing - initializes logging.
     """
+    
+    _last_id = -1 # used interally for getting 'unique' ids
+    
     def __init__(self,*args,**keys):
         """
         base class for unit testing - initializes logging.
@@ -79,6 +82,17 @@ class TestBase(unittest.TestCase,MyLoggingBase):
             try: os.rmdir(fd)
             except (WindowsError,IOError) as e: pass#print repr(e) @UnusedVariable
         
+        
+    #===========================================================================
+    # Generate random text & ids
+    #===========================================================================
+    def get_next_id(self):
+        #assume thread safe
+        self._last_id += 1
+        return self._last_id
+    
+    
+        
 #===============================================================================
 # Run Test
 #===============================================================================
@@ -92,3 +106,4 @@ def run_test():
 #===============================================================================
 if __name__ == '__main__':
     run_test()
+    
