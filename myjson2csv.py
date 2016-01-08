@@ -304,7 +304,7 @@ class MyJSON2CSV(MyLoggingBase):
     #===========================================================================
     # Write things
     #===========================================================================
-    def writerow(self,*args):
+    def writerow(self,row):
         """simply writes to the csv directly, adding row number if requested
         and formating datatypes the standard way!"""
         
@@ -313,14 +313,14 @@ class MyJSON2CSV(MyLoggingBase):
         
         # add row number if requested!
         self._cur_row_num += 1
-        if self._add_row_num: row = [self._cur_row_num]
-        else: row = []
+        if self._add_row_num: nrow = [self._cur_row_num]
+        else: nrow = []
         
         # make sure writing it wont break anything - convert to strings!
-        row.extend(self._item_to_str(i) for i in args)
+        nrow.extend(self._item_to_str(i) for i in row)
         
         # write the row
-        self._csv.writerow(row)
+        self._csv.writerow(nrow)
         
     def write_json_text(self,json_text):
         """converts to json before sending to self.write_json_object(...)"""
