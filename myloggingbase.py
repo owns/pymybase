@@ -208,7 +208,7 @@ class MyLoggingBase(object):
     
     
     #===========================================================================
-    # # Timestamp
+    # Timestamp
     #===========================================================================
     @staticmethod
     def get_current_datetime(utc=False,add_sec=0):
@@ -238,6 +238,44 @@ class MyLoggingBase(object):
         return MyLoggingBase.datetime_to_timestamp(
                     MyLoggingBase.get_current_datetime(utc=utc,add_sec=add_sec),
                     for_file=for_file,dt_format=dt_format)
+    
+    #===========================================================================
+    # Reading/Writing key-value pairing files
+    #===========================================================================
+    @staticmethod
+    def read_file_key_values(filename,*keys):
+        """reads the file (filename) and returns the
+        key-value pairing (a dictionary).  If keys are
+        specified, only the given keys are returned."""
+        ret = {i:None for i in keys}
+        
+        try:
+            with open(filename,'r') as r:
+                # get all key-value pairs from the file, line-by-line
+                for key,value in (l.rstrip().split('=',1) for l in r if '=' in l):
+                    # if no argments are passed or the key is one we're looking for
+                    if not keys or key in ret:
+                        # save it to return later
+                        ret[key] = value
+        except IOError: ret = {}
+        return ret
+    
+    @staticmethod
+    def write_file_key_values(filename,overwrite_file=True,**keys):
+        """writes the key-value pairing passed (**keys) to the
+        file (filename).
+        If overwrite_file is fail, the operation failed.
+        is the operation is successful, True is returned.
+        """
+        # overwrite?
+        if not overwrite_file and os.path.exists(filename): return False
+        
+        # open the file
+        try:
+            with open(filename,'w') as w:
+                w.writelines(('{!s}={!s}\n'.format(k,v) for k,v in keys.iteritems()))
+        except IOError: return False
+        else: return True
     
 #===============================================================================
 # Main
