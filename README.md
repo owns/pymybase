@@ -1,28 +1,8 @@
 # pymybase #
 
-This is more an set of base classes helpful for doing things.  These classes are used through several projects to simplify things.
-Enjoy.
+This is more of a set of base classes helpful for doing things.  These classes are used through several projects to simplify things, like logging (MyLoggingBase), exporting to csv from json (JSON2CSV), threading (MyThread), and a sqlite db (MyDb).
 
-### What is this repository for? ###
-
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
-
-### How do I get set up? ###
-
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
-
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
+I enjoy this stuff, so please let me know if you have any questions/comments/conserns.
 
 ### Who do I talk to? ###
 
