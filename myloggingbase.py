@@ -273,7 +273,7 @@ class MyLoggingBase(object):
         # open the file
         try:
             with open(filename,'w') as w:
-                w.writelines(('{!s}={!s}\n'.format(k,v) for k,v in keys.iteritems()))
+                w.writelines(('{}={}\n'.format(k,v) for k,v in keys.iteritems()))
         except IOError: return False
         else: return True
     
