@@ -22,7 +22,7 @@ class MyLoggingBase(object):
     It also has some static timestamp things...
     NOTE: get_output_fd & get_resource_fd use cwd!
     """
-    __version__ = '0.2.0'
+    __version__ = '0.2.1'
     _TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
     logger = None
     
