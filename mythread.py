@@ -1,8 +1,9 @@
-'''
-Created on Mar 20, 2015
-
-@author: owns
-'''
+"""
+Elias Wood (owns13927@yahoo.com)
+2015-03-20
+a base thread class for doing jobs, to work with a mydb instance
+shared by all workers
+"""
 from myloggingbase import MyLoggingBase
 import threading
 import time
@@ -24,6 +25,7 @@ class MyThread(MyLoggingBase,threading.Thread):
     _jobs_completed = None
     
     _db = None
+    _batch_size = None
     
     _my_id = None
     _job = None
@@ -60,6 +62,7 @@ class MyThread(MyLoggingBase,threading.Thread):
         
         # set vars
         self._db = db
+        self._batch_size = keys.pop('batch',1)
         self._job = job
         self._total_rows = 0
         self._jobs_completed = 0
@@ -91,7 +94,7 @@ class MyThread(MyLoggingBase,threading.Thread):
     def __issue_stop(self,i):
         """add something to the queue to wake up the thread"""
         #if i not in (self._CTRL_QUEUE,self._CTRL_JOB,self._CTRL_INTERRUPT)
-        self._db.put_in_queue(self.get_job_type(),i,True)
+        self._db.get_event().set()
     
     def stop(self,wait_for_empty_queue=True):
         """stops the thread, either when the queue is empty or right away
@@ -129,39 +132,21 @@ class MyThread(MyLoggingBase,threading.Thread):
         while self._continue_looping:
             
             # is there another job to do?
-            try: item = self._db.get_next_job(self.get_job_type(),
-                                              self._continue_waiting)
+            try: items = self._db.get_next_jobs(self.get_job_type(),
+                                               count=self._batch_size)
             except StopIteration:
-                self.logger.debug('queue is empty, and I am not waiting!')
-                break
+                if self._continue_waiting: self._db.get_event().wait()
+                else:
+                    self.logger.debug('queue is empty, and I am not waiting!')
+                    break
             else:
                 # check for interupt
                 if self._interupt_process:
                     self.logger.warning("we've been interrupted!")
-                elif isinstance(item,int):
-                    # someone is telling us to stop!
-                    #======================== INTERRUPT ========================
-                    if item == self._CTRL_INTERRUPT:
-                        self.logger.debug("I've been told to stop now... interrupted... okay")
-                        self._continue_looping = False # don't get more things..
-                        self._db.put_in_queue(self.get_job_type(),item,True) # let others know
-                    #=========================== JOB ===========================
-                    elif item == self._CTRL_JOB:
-                        self.logger.debug("I'm been told to stop when I'm done with my job... that's now. Okay")
-                        self._continue_looping = False # don't get more things..
-                        self._db.put_in_queue(self.get_job_type(),item,True) # let others know
-                    #========================== QUEUE ==========================
-                    elif item == self._CTRL_QUEUE:
-                        self.logger.debug("I've been told to stop when the queue is empty... okay")
-                        self._continue_waiting = False
-                    #========================= WAKE UP =========================
-                    elif item == self._CTRL_WAKE_UP:
-                        self.logger.debug("I've been told to wake up... okay.")
-                    #========================= IDK... ==========================
-                    else:
-                        self.logger.debug("I've been told to stop with %d... i don't know what that means.... I'm ignoring it",item)
-                        #self._continue_looping = False
                 else:
+                    
+                    self._process_items(items)
+                    '''
                     # start the job
                     self.__job_updated_time = job_start_time = time.clock()
                     self.__current_job_id = item[self._db.JOB_ID]
@@ -206,11 +191,7 @@ class MyThread(MyLoggingBase,threading.Thread):
                         # log stats
                         self.logger.debug('job %s failed, %03d rows, %f seconds',
                                                            job_id,rows,job_end_time-job_start_time)
-        
-        # to stop when the queue is empty if that message was passed...!
-        if not self._continue_waiting:
-            self._db.put_in_queue(self.get_job_type(),self._CTRL_QUEUE,True)
-                             
+                      '''
         # give us a change to finish a few things if needed
         self._after_looping()
     
@@ -227,7 +208,46 @@ class MyThread(MyLoggingBase,threading.Thread):
             and it is considered complete (removed from the queue)
         """
         return self._DUMMY_END_VALUE
+    
+    def _process_items(self,items):
+        """ For batch sizes>1, override this method.
+        items is a iterable object 
+        """
         
+        
+        for item in (list(i) for i in items):
+            # some logging
+            self.logger.debug('starting job %s with id=%s',
+                          self.__current_job_id,
+                          item[self._db.ITEM_ID])
+            
+            # start the job
+            self.__job_updated_time = job_start_time = time.clock()
+            self.__current_job_id = item[self._db.JOB_ID]
+            
+            job_completed,rows = self._process_item(*item[1:]) #item_id,init_data,start_value,end_value
+                    
+            # track total rows
+            self._total_rows += rows
+            
+            job_id = self.__current_job_id
+            job_end_time = time.clock() # get time of completed job
+            # handle if job was successful
+            if job_completed:
+                # done processing task
+                self._complete_job() # flush files and update db
+                self._jobs_completed += 1 # track number of jobs
+                # log stats
+                self.logger.debug('job %s completed, %03d rows, %f seconds',
+                                                   job_id,rows,job_end_time-job_start_time)
+            else:
+                #self._update_current_job()
+                self.__current_job_id = None
+                # log stats
+                self.logger.debug('job %s failed, %03d rows, %f seconds',
+                                                   job_id,rows,job_end_time-job_start_time)
+                
+                
     def _process_item(self,item_id,init_data=None,
                       start_value=None,end_value=None):
         """
@@ -348,7 +368,7 @@ class MyThread(MyLoggingBase,threading.Thread):
         #if there is a job being worked on...
         if self.__current_job_id is not None:
             # updated db
-            self._db.remove_job(self.__current_job_id,self.get_job_type())
+            self._db.remove_job(self.__current_job_id)
             self.__current_job_id = None
             # flush files
             self._flush_files()
