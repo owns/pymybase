@@ -64,10 +64,10 @@ class Test_MyDb(TestBase):
         a = MyDb(':memory:')
         
         job_id = a.add_job('1','main',3)
-        a.get_next_job('main', False) # emtpy queue
+        a.get_next_job('main') # emtpy queue
         a.update_job(job_id,'start','end')
-        a.populate_queues() # re-populate
-        item = a.get_next_job('main', False) # now it'll be updated!
+        a.populate_queues(first_call=True) # re-populate
+        item = a.get_next_job('main') # now it'll be updated!
         
         self.assertEqual(item[a.JOB_ID],job_id,msg="job id isn't the same")
         self.assertEqual(item[a.ITEM_ID],'1',msg="item id isn't the same")
@@ -95,15 +95,15 @@ class Test_MyDb(TestBase):
         """test that a job can be removed"""
         a = MyDb(':memory:')
         job_id = a.add_job('1','main',3)
-        a.get_next_job('main', False)
-        self.assertTrue(a.remove_job(job_id,'main'),msg="why wasn't it removed???")
+        a.get_next_job('main')
+        self.assertTrue(a.remove_job(job_id),msg="why wasn't it removed???")
 
     def test_get_next_job(self):
         """test that a job has the correct items (length/count)"""
         a = MyDb(':memory:')
         
         job_id = a.add_job('1','main',3)
-        item = a.get_next_job('main', False) # now it'll be populated again!
+        item = a.get_next_job('main') # now it'll be populated again!
         self.assertTrue(isinstance(item,(list,tuple)),msg="item isn't a sequence...")
         
         self.assertEqual(item[a.JOB_ID],job_id,msg="job id isn't the same")
@@ -122,15 +122,14 @@ class Test_MyDb(TestBase):
             
             a = MyDb(fname) # create db object
             job_id = a.add_job('1','main',3) # add job
-            a.get_next_job('main', False) # empty queue
+            a.get_next_job('main') # empty queue
             a.update_job(job_id, "123","123456789") # update
             #del a
             
             # was the job updated with that value???
             a = MyDb(fname)
-            a.populate_queues()
-            try: item = a.get_next_job('main', False) # empty queue
-            except StopIteration: self.fail(str(i)+' no job found!?!!?!?!?!')
+            try: item = a.get_next_job('main') # empty queue
+            except StopIteration: self.fail(str(i)+'. no job found!?!!?!?!?!')
             
             self.assertEqual(item[a.JOB_ID],job_id,msg="job id isn't the same")
             self.assertEqual(item[a.ITEM_ID],'1',msg="item id isn't the same")
@@ -156,11 +155,11 @@ class Test_MyDb(TestBase):
                 threading.Thread.__init__(self)
             def run(self):
                 while True:
-                    try: item = self._db.get_next_job(self._job_type,False)
+                    try: item = self._db.get_next_job(self._job_type)
                     except StopIteration: break
                     logging.debug('processing item %02d of type %-4s',int(item[0]),self._job_type)
                     time.sleep(1) # do something that takes some time...
-                    self._db.remove_job(item[0],self._job_type)
+                    self._db.remove_job(item[0])
         # init and fill db
         db = MyDb(':memory:')
         for i in xrange(30):
