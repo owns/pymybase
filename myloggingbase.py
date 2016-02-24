@@ -244,20 +244,18 @@ class MyLoggingBase(object):
     #===========================================================================
     @staticmethod
     def read_file_key_values(filename,*keys):
-        """reads the file (filename) and returns the
-        key-value pairing (a dictionary).  If keys are
-        specified, only the given keys are returned."""
-        ret = {i:None for i in keys}
+        """reads the file (filename) and returns the key-
+        value pairing (a dictionary).  keys is not used"""
+        ret = dict() #{i:None for i in keys}
         
         try:
             with open(filename,'r') as r:
                 # get all key-value pairs from the file, line-by-line
                 for key,value in (l.rstrip().split('=',1) for l in r if '=' in l):
                     # if no argments are passed or the key is one we're looking for
-                    if not keys or key in ret:
-                        # save it to return later
-                        ret[key] = value
-        except IOError: ret = {}
+                    #if not keys or key in ret:
+                    ret[key] = value
+        except IOError: pass
         return ret
     
     @staticmethod
@@ -273,7 +271,8 @@ class MyLoggingBase(object):
         # open the file
         try:
             with open(filename,'wb') as w:
-                w.writelines(('{}={}\n'.format(k,v) for k,v in keys.iteritems()))
+                w.writelines(('{}={}\n'.format(k,v) for k,v in keys.iteritems()
+                              if v is not None))
         except IOError: return False
         else: return True
     
