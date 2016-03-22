@@ -77,6 +77,7 @@ class MyDb(MyLoggingBase):
         self._lock = threading.Lock()
         self._queue_lock = threading.Lock()
         self.event = threading.Event()
+        self.event.clear()
         self._queues = {}
         self.queue_max = queue_max if queue_max else None
         self.queue_type = queue_type
@@ -332,7 +333,7 @@ class MyDb(MyLoggingBase):
         
         # wake up threads or let them sleep
         if q: self.event.set()
-        else: self.event.clear()
+        #else: self.event.clear()
         
         return tuple(idsAdded.keys()),idsRemoved
     
