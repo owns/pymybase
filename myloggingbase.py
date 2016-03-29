@@ -5,6 +5,7 @@ a base class for all my classes to help with logging and timestamps
 """
 import logging
 import os
+import sys
 import datetime
 
 class MyLoggingBase(object):
@@ -95,7 +96,7 @@ class MyLoggingBase(object):
                 
         if console_log_lvl:
             # add console handler
-            import sys
+            #import sys
             h2 = logging.StreamHandler(sys.stdout) # to change the coloring! from stderr to stdout
             h2.setFormatter(log_formatter)
             h2.setLevel(logging.__getattribute__(console_log_lvl)) # @UndefinedVariable
@@ -165,22 +166,25 @@ class MyLoggingBase(object):
     # NOTE: __file__ will still reference this loc..., assuming working dir...
     @staticmethod
     def get_resource_fd(filename=None):
-        """pass a filename to join with the resource folder"""
-        dir_name = os.path.join(os.path.realpath(''),'resources') #__file__
-        return MyLoggingBase.join_folder_and_file(dir_name,filename)
+        """pass a filename to join with the resource folder (handles frozen)"""
+        return os.path.join(os.path.dirname(
+                sys.executable if getattr(sys, 'frozen', False) else __file__
+                ),'resources',filename)
+        #dir_name = os.path.join(os.path.realpath(''),) #__file__
+        #return MyLoggingBase.join_folder_and_file(dir_name,filename)
     
     @staticmethod
     def get_output_fd(filename=None):
-        """pass a filename to join with the output folder"""
-        dir_name = os.path.join(os.path.realpath(''),'output') #__file__
-        return MyLoggingBase.join_folder_and_file(dir_name,filename)
+        """pass a filename to join with the output folder (handles frozen)"""
+        return os.path.join(os.path.dirname(
+                sys.executable if getattr(sys, 'frozen', False) else __file__
+                ),'output',filename)
     
     @staticmethod
     def join_folder_and_file(fd,filename=None):
-        """tests if folder exists, returns None if if doesn't, the filepath if successful!"""
-        if isinstance(filename,(str,unicode)):
-            return os.path.join(fd,filename)
-        else: return fd
+        """tests if folder/file exists. returns None if if doesn't, the filepath if successful!"""
+        p = os.path.join(fd,filename) if isinstance(filename,(str,unicode)) else fd
+        return p if os.path.exists(p) else None
         
     #===========================================================================
     # Summary
