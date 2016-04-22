@@ -25,7 +25,7 @@ class MyJSON2CSV(MyLoggingBase):
     a class for simplifying flattening json (dict) objects - not just top level!
     to use:
         a = MyJSON2CSV('filename.csv')
-        #a.set_headers('key1','key2.subkey1','key2.subkey2','key2.subkey2.ssk3')
+        #a.set_headers('key1','key2.subkey1','key2.subkey2','key2.subkey2.ssk3','key..name')
         #a.begin_writing() # alt way to set things...
         #a.add_row_number() # can add a row number
         for json_obj in json_objects:
@@ -37,14 +37,10 @@ class MyJSON2CSV(MyLoggingBase):
             but there is a race condition...
         DOESN'T CHECK TO MAKE SURE ALL KEYS (& SUB KEYS) ARE USED/EXPORTED!
     TO ADD:
-        add in expand_lists feature...
-        add in better check if missing data check...
     """
     #TODO: add check if we've missing anything (only top lvl atm)!
-    #TODO: add ability to handle lists!
-    #TODO: add ability to set defaults for columns
-    #TODO: add ability to have lambda columns - functions!
-    #TODO: flatten lists!
+    #TODO: add ability to handle lists! flatten lists!
+    
     _filename = None
     _headers = None
     _top_level_headers = None
@@ -145,10 +141,11 @@ class MyJSON2CSV(MyLoggingBase):
     
     def set_headers(self,*headers):
         """set headers for the csv (in order).  To refer to a key in a dict
-        object, for example with {'a':{'a'=2,b':4},'b'=1}:
+        object, for example with {'a':{'a':2,b':4},'b':1,'a.b':7}:
             'a.b' --> 4
             'b' --> 1
-            'a' --> a=2,b=4
+            'a' --> '{"a": 2,"b": 4}'
+            'a..b' --> 7
         
         optionally, {key:'the key in the dict object explained above',
                      name:'rename the column header'
@@ -417,7 +414,7 @@ class MyJSON2CSV(MyLoggingBase):
         return (obj==None or isinstance(obj,(str,unicode,int,long,float,bool,Decimal)))        
     
     @staticmethod
-    def __get_item(obj,loc,default=None):
+    def __get_item(obj,loc,default=None,loc_ind=0):
         """get the item out of dict described. by the loc (e.g. 'a.b.c')"""
         if obj is None: return None
         if isinstance(loc, dict):
@@ -441,10 +438,19 @@ class MyJSON2CSV(MyLoggingBase):
             return MyJSON2CSV.__get_item(obj,loc['key'],
                                          loc.get('default',default))
         else:
-            if '.' in loc:
-                a = loc.find('.')
-                return MyJSON2CSV.__get_item(obj.get(loc[:a]),loc[a+1:])
-            else: return obj.get(loc,default)
+            ind = loc.find('.',loc_ind)
+            #print obj,loc,loc_ind,ind
+            if ind==-1: return obj.get(loc,default)
+            elif loc.find('.',ind+1) == ind+1:
+                # there's a .. --> convert to 1 . but keep it
+                return MyJSON2CSV.__get_item(obj,loc[:ind]+loc[ind+1:],default,ind+1)
+            else:
+                return MyJSON2CSV.__get_item(obj.get(loc[:ind]),loc[ind+1:],default)
+                
+            #if '.' in loc:
+            #    a = loc.find('.')
+            #    return MyJSON2CSV.__get_item(obj.get(loc[:a]),loc[a+1:])
+            #else: return obj.get(loc,default)
     
     #===========================================================================
     # Turn whatever the item it into a string (writable to the csv)
