@@ -102,7 +102,8 @@ class Test_MyJSON2CSV(TestBase):
         a.close(); del a
     
     def test_custom_header_object(self):
-        """test using custom header objects instead of just keys!"""
+        """test using custom header objects instead of just keys
+           and test for keys w/ dots in their name, using a..b!"""
         fname = self.get_new_file_name('aaa.csv')
         a = MyJSON2CSV(fname)
         
@@ -113,23 +114,24 @@ class Test_MyJSON2CSV(TestBase):
         
         a.set_headers(dict(key='b',name='b+',default='hello'),
                       dict(key='b',name='key_fn',key_fn=key_fn)
-                      ,'a',dict(name='dict_fn',dict_fn=dict_fn))
+                      ,'a',dict(name='dict_fn',dict_fn=dict_fn),
+                      'a..b')
         
         for i in xrange(0,10):
-            a.write_json_object(dict(a=i,b=i+1))
+            a.write_json_object({'a':i,'b':i+1,'a.b':123})
         
         a.close(); del a
         
         # test the file was written correctly
         with open(fname,'r') as r:
             # headers
-            self.assertEqual(r.next().rstrip(),'b+,key_fn,a,dict_fn',
+            self.assertEqual(r.next().rstrip(),'b+,key_fn,a,dict_fn,a..b',
                              'column headers where not set correctly')
             # rows
             c = 0
             for line in r:
                 self.assertEqual(line.rstrip(),
-                                 '{0},{0} - 3,{1},hello'.format(c+1,c),
+                                 '{0},{0} - 3,{1},hello,123'.format(c+1,c),
                                  'incorrect row - '+str(c+1))
                 c += 1
         
@@ -144,7 +146,7 @@ class Test_MyJSON2CSV(TestBase):
 # Run Test
 #===============================================================================
 def run_test():
-    import os; os.chdir('..')
+    os.chdir('..')
     import unittest
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_MyJSON2CSV)
     unittest.TextTestRunner().run(suite)
