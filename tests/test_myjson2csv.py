@@ -116,7 +116,8 @@ class Test_MyJSON2CSV(TestBase):
                       dict(key='b',name='key_fn',key_fn=key_fn)
                       ,'a',dict(name='dict_fn',dict_fn=dict_fn),
                       'a..b',
-                      dict(name='eval',eval='{a}*1.0/{b}',keys=['a','b'])
+                      dict(name='eval',eval='{a}*1.0/{b}',keys=['a','b']),
+                      dict(name='eval2',eval='{a..b}*1.0/{b}',keys=['a..b','b'])
                       )
         
         for i in xrange(0,10):
@@ -127,13 +128,13 @@ class Test_MyJSON2CSV(TestBase):
         # test the file was written correctly
         with open(fname,'r') as r:
             # headers
-            self.assertEqual(r.next().rstrip(),'b+,key_fn,a,dict_fn,a..b,eval',
+            self.assertEqual(r.next().rstrip(),'b+,key_fn,a,dict_fn,a..b,eval,eval2',
                              'column headers where not set correctly')
             # rows
             c = 0
             for line in r:
                 self.assertEqual(line.rstrip(),
-                                 '{0},{0} - 3,{1},hello,123,{2}'.format(c+1,c,c*1.0/(c+1)),
+                                 '{0},{0} - 3,{1},hello,123,{2},{3}'.format(c+1,c,c*1.0/(c+1),123.0/(c+1)),
                                  'incorrect row - '+str(c+1)+' '+line.rstrip())
                 c += 1
         
