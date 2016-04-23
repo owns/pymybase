@@ -115,7 +115,9 @@ class Test_MyJSON2CSV(TestBase):
         a.set_headers(dict(key='b',name='b+',default='hello'),
                       dict(key='b',name='key_fn',key_fn=key_fn)
                       ,'a',dict(name='dict_fn',dict_fn=dict_fn),
-                      'a..b')
+                      'a..b',
+                      dict(name='eval',eval='{a}*1.0/{b}',keys=['a','b'])
+                      )
         
         for i in xrange(0,10):
             a.write_json_object({'a':i,'b':i+1,'a.b':123})
@@ -125,14 +127,14 @@ class Test_MyJSON2CSV(TestBase):
         # test the file was written correctly
         with open(fname,'r') as r:
             # headers
-            self.assertEqual(r.next().rstrip(),'b+,key_fn,a,dict_fn,a..b',
+            self.assertEqual(r.next().rstrip(),'b+,key_fn,a,dict_fn,a..b,eval',
                              'column headers where not set correctly')
             # rows
             c = 0
             for line in r:
                 self.assertEqual(line.rstrip(),
-                                 '{0},{0} - 3,{1},hello,123'.format(c+1,c),
-                                 'incorrect row - '+str(c+1))
+                                 '{0},{0} - 3,{1},hello,123,{2}'.format(c+1,c,c*1.0/(c+1)),
+                                 'incorrect row - '+str(c+1)+' '+line.rstrip())
                 c += 1
         
         #nfname =  os.path.join(os.environ['USERPROFILE'],"Desktop",
