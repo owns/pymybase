@@ -151,12 +151,20 @@ class MyJSON2CSV(MyLoggingBase):
                      name:'rename the column header'
                      default:'default value'
                      key_fn: # function to transform the key value.
-                            key_fn(key='abc',value='123',default=None)
-                     dict_fn: # row dict and default are the parameters.
-                            dict_fn(d={},default=None)
+                             Must have 'key': what key to get.
+                             e.g. key_fn(key='abc',value='123',default=None): return value+'abc'
+                     dict_fn: # row dict and default are passed.
+                              e.g. dict_fn(d={},default=None): return d.get('a',0)+d.get('b',0)
+                    eval: # formula to eval. keys must be between {...}
+                          Must have 'keys': finite, iterable list of keys that are used.
+                          'on_error(execption,column,values,equation_w_values)': function to handle exceptions.
+                          if no function is given, 'default' is returned
+                          e.g. column: eval='{a}/{b}',keys=('a','b')
+                            
          priority: 1: dict_fn
                    2: key_fn (must have 'key' key)
-                   3. key
+                   3. eval (must have 'keys' key!)
+                   4. key
         NOTE: it's recommend to use name when using a custom function.
             otherwise, it will be blank!
         """
@@ -177,8 +185,13 @@ class MyJSON2CSV(MyLoggingBase):
                        isinstance(h.get('key'),basestring): pass
                     else: # key_fn is not callable or no ;key' key!!!!
                         raise BadCustomHeaderObject("the key 'key_fn' must be "+
-                                                "callable and 'key' must be a "+
-                                                "string valued key. "+repr(h))
+                            "callable and 'key' must be a string valued key. "+repr(h))
+                elif 'eval' in h:
+                    if isinstance(h['eval'],basestring) and \
+                       hasattr(h.get('keys'), '__iter__'): pass
+                    else:
+                        raise BadCustomHeaderObject("the key 'eval' must be "+
+                            "a string and 'keys' must be an iterable object. "+repr(h))
                 elif 'key' not in h or not isinstance(h['key'],basestring):
                     # at least key has to be provided!
                     raise BadCustomHeaderObject('you at least need to populate'+
@@ -434,6 +447,18 @@ class MyJSON2CSV(MyLoggingBase):
                 except Exception, e:
                     raise CustomColumnFunctionException(repr(loc)+'\n'+repr(e))
                 else: return a
+            if 'eval' in loc:
+                vals = {key:MyJSON2CSV.__get_item(obj,key)
+                        for key in loc['keys']}
+                eq = None
+                try:
+                    eq = loc['eval'].format(**vals)
+                    val = eval(eq,{},{})
+                except Exception, e:
+                    if callable(loc.get('on_error')):
+                        return loc['on_error'](e,loc,vals,eq)
+                    else: return default
+                else: return val
             # ---------------- key -----------------
             return MyJSON2CSV.__get_item(obj,loc['key'],
                                          loc.get('default',default))
