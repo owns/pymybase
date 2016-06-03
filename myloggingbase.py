@@ -22,8 +22,11 @@ class MyLoggingBase(object):
         self.log_summary_info())
     It also has some static timestamp things...
     NOTE: get_output_fd & get_resource_fd use cwd!
+    CHANGELOG:
+    2016-05-27 v0.3.0: Elias Wood
+        updated get/join project folders to handle if frozen (cx_frozen)
     """
-    __version__ = '0.2.1'
+    __version__ = '0.3.0'
     _TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
     logger = None
     
@@ -165,7 +168,7 @@ class MyLoggingBase(object):
     #===============================================================================
     # NOTE: __file__ will still reference this loc..., assuming working dir...
     @staticmethod
-    def get_resource_fd(filename=None):
+    def get_resource_fd(filename=''):
         """pass a filename to join with the resource folder (handles frozen)"""
         return os.path.join(os.path.dirname(
                 sys.executable if getattr(sys, 'frozen', False) else __file__
@@ -174,14 +177,14 @@ class MyLoggingBase(object):
         #return MyLoggingBase.join_folder_and_file(dir_name,filename)
     
     @staticmethod
-    def get_output_fd(filename=None):
+    def get_output_fd(filename=''):
         """pass a filename to join with the output folder (handles frozen)"""
         return os.path.join(os.path.dirname(
                 sys.executable if getattr(sys, 'frozen', False) else __file__
                 ),'output',filename)
     
     @staticmethod
-    def join_folder_and_file(fd,filename=None):
+    def join_folder_and_file(fd,filename=''):
         """tests if folder/file exists. returns None if if doesn't, the filepath if successful!"""
         p = os.path.join(fd,filename) if isinstance(filename,(str,unicode)) else fd
         return p if os.path.exists(p) else None
