@@ -23,6 +23,10 @@ class MyAPIBase(MyLoggingBase):
           There are a few key methods each API will need to override.
           
     CHANGELOG:
+    2016-06-17 v0.1.2: Elias Wood
+        fixed is_waiting() to not return negative time
+        added mount(prefix,adapter) and unmount(prefix)
+        little code fixes (most just for looks) 
     2016-05-31 v0.1.1: Elias Wood
         _try_api_call also returns the request object to handle status_code
         added is_waiting fn to tell how long API is waiting for (if at all)
@@ -30,13 +34,14 @@ class MyAPIBase(MyLoggingBase):
         First Version!!!
         
     """
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
     #===========================================================================
     # Variables
     #===========================================================================
     _session = None
+    __mounts = None
     __proxies = None
-    __verify_requests = True
+    __verify_requests = None
     __cert_requests = None
     debug_api_calls = None
     __waiting_till = None
@@ -70,6 +75,7 @@ class MyAPIBase(MyLoggingBase):
         to call self.reset_session() at the end to init the session"""
         super(MyAPIBase, self).__init__(*args,**keys)
         self.debug_api_calls = False
+        self.__mounts = dict()
         self.__waiting_till = 0
         
         # set proxy if provided
@@ -102,9 +108,10 @@ class MyAPIBase(MyLoggingBase):
         self.__end_time = None
         self.set_auth()
         self._session.proxies = self.__proxies
-        self._session.verify = self.__verify_requests
-        self._session.cert = self.__cert_requests
-        self._session.proxies = self.__proxies
+        if self.__verify_requests is not None:
+            self._session.verify = self.__verify_requests
+        if self.__cert_requests is not None:
+            self._session.cert = self.__cert_requests
         
         # set metrics start
         self.__item_counts = {}
@@ -178,10 +185,24 @@ class MyAPIBase(MyLoggingBase):
         self.__cert_requests = cert
         if self.session_is_open(): self._session.cert = cert
     
+    def mount(self,prefix,adapter):
+        """Registers a connection adapter to a prefix"""
+        self.__mounts[prefix] = adapter
+        if self.session_is_open(): self._session.mount(prefix,adapter)
+    def unmount(self,prefix):
+        """Removes the mount, but requires .reset_session()
+        to remove it from the session if .session_is_open().
+        Returns True if an adapter was removed"""
+        if prefix in self.__mounts:
+            del self.__mounts[prefix]
+            return True
+        else: return False
+    
     def is_waiting(self):
         """returns how long the api is currently waiting for...
         """
-        return (self.__waiting_till-time.time()) if self.__waiting_till else 0
+        w = self.__waiting_till-time.time() if self.__waiting_till else 0
+        return (w) if w>0 else 0
     
     #===========================================================================
     # Getters / Setters for requests
