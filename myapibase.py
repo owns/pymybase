@@ -23,6 +23,8 @@ class MyAPIBase(MyLoggingBase):
           There are a few key methods each API will need to override.
           
     CHANGELOG:
+    2016-06-17 v0.1.3: Elias Wood
+        bug fix for .get(...)
     2016-06-17 v0.1.2: Elias Wood
         fixed is_waiting() to not return negative time
         added mount(prefix,adapter) and unmount(prefix)
@@ -34,7 +36,7 @@ class MyAPIBase(MyLoggingBase):
         First Version!!!
         
     """
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
     #===========================================================================
     # Variables
     #===========================================================================
@@ -142,10 +144,10 @@ class MyAPIBase(MyLoggingBase):
         r = None
         try:
             self.__requests_get_count += 1
-            r = self.sessions.get(*args,**keys)
-        except:
+            r = self._session.get(*args,**keys)
+        except Exception, e:
             self.__requests_error_count += 1
-            raise
+            raise e
         else: return r
     
     #===========================================================================
