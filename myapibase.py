@@ -23,6 +23,8 @@ class MyAPIBase(MyLoggingBase):
           There are a few key methods each API will need to override.
           
     CHANGELOG:
+    2016-06-21 v0.1.4: Elias Wood
+        bug fix: .reset_session() wan't applying mounts set previously
     2016-06-17 v0.1.3: Elias Wood
         bug fix for .get(...)
     2016-06-17 v0.1.2: Elias Wood
@@ -36,7 +38,7 @@ class MyAPIBase(MyLoggingBase):
         First Version!!!
         
     """
-    __version__ = '0.1.3'
+    __version__ = '0.1.4'
     #===========================================================================
     # Variables
     #===========================================================================
@@ -114,6 +116,8 @@ class MyAPIBase(MyLoggingBase):
             self._session.verify = self.__verify_requests
         if self.__cert_requests is not None:
             self._session.cert = self.__cert_requests
+        for prefix,adapter in self.__mounts.iteritems():
+            self._session.mount(prefix,adapter)
         
         # set metrics start
         self.__item_counts = {}
