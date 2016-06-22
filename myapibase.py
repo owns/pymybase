@@ -23,6 +23,8 @@ class MyAPIBase(MyLoggingBase):
           There are a few key methods each API will need to override.
           
     CHANGELOG:
+    2016-06-21 v0.2.0: Elias Wood
+        extracted_dt is now a datetime instead of a str!
     2016-06-21 v0.1.4: Elias Wood
         bug fix: .reset_session() wan't applying mounts set previously
     2016-06-17 v0.1.3: Elias Wood
@@ -292,10 +294,8 @@ class MyAPIBase(MyLoggingBase):
         self.after_api_call(try_count,url,params,r) # TO BE overridden fn
     
         # parse timestamp
-        extracted_dt = self.datetime_to_timestamp(
-                                datetime.datetime.strptime(
-                                r.headers['date'],
-                                '%a, %d %b %Y %H:%M:%S %Z'))    
+        extracted_dt = datetime.datetime.strptime(r.headers['date'],
+                                                  '%a, %d %b %Y %H:%M:%S %Z')    
         
         # did we hit the rate limit 'Too Many Requests'?
         if r.status_code == 429:
