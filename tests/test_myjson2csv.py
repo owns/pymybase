@@ -36,7 +36,7 @@ class Test_MyJSON2CSV(TestBase):
         for i in xrange(100):
             d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
             a.write_json_object(d)
-        self.assertEqual(len(a._missed_headers),0,'the wrong number of fields were determined to be missed {}'.format(a._missed_headers))
+        self.assertEqual(len(a.missed_headers),0,'the wrong number of fields were determined to be missed {}'.format(a.missed_headers))
         a.close(); del a
     
     def test_setting_headers_missed(self):
@@ -48,8 +48,8 @@ class Test_MyJSON2CSV(TestBase):
             d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
             a.write_json_object(d)
         
-        self.assertIn('a',a._missed_headers,'MyJSON2CSV failed to discover there was a key not being exported!')
-        self.assertEqual(len(a._missed_headers),1,'the wrong number of fields were determined to be missed {}'.format(a._missed_headers))
+        self.assertIn('a',a.missed_headers,'MyJSON2CSV failed to discover there was a key not being exported!')
+        self.assertEqual(len(a.missed_headers),1,'the wrong number of fields were determined to be missed {}'.format(a.missed_headers))
         a.close(); del a
         
     def test_assuming_headers(self):
@@ -59,7 +59,7 @@ class Test_MyJSON2CSV(TestBase):
         for i in xrange(100):
             d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
             a.write_json_object(d)
-        self.assertEqual(len(a._missed_headers),0,'no fields should be missed')
+        self.assertEqual(len(a.missed_headers),0,'no fields should be missed')
         a.close(); del a
     
     def test_assuming_headers_missed(self):
@@ -72,8 +72,8 @@ class Test_MyJSON2CSV(TestBase):
             a.write_json_object(d)
             d = dict(a=1,b='2',c=u'3',d=dict(a=4,b=5),e=[1,2,3],k=i)
         
-        self.assertIn('k',a._missed_headers,'MyJSON2CSV failed to discover key k is missing from the csv')
-        self.assertEqual(len(a._missed_headers),1,'only one field should be missed')
+        self.assertIn('k',a.missed_headers,'MyJSON2CSV failed to discover key k is missing from the csv')
+        self.assertEqual(len(a.missed_headers),1,'only one field should be missed')
         a.close(); del a
     
     def test_auto_numbering(self):
