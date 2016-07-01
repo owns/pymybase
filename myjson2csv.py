@@ -39,6 +39,9 @@ class MyJSON2CSV(MyLoggingBase):
         DOESN'T CHECK TO MAKE SURE ALL KEYS (& SUB KEYS) ARE USED/EXPORTED!
     
     CHANGELOG:
+    2016-06-22 v1.1.1: Elias Wood
+        set default null
+        also forgot to add formatting for datetime... just returned ''... ops.
     2016-06-22 v1.1.0: Elias Wood
         added support for datetime
     2016-06-22 v1.0.0: Elias Wood
@@ -72,6 +75,8 @@ class MyJSON2CSV(MyLoggingBase):
     _formatter = None
     _expand_lists = False
     _LIST_FLAG = '<LIST_{0}>'
+    NULL_DEFAULT = ''
+    null = None
     
     def __init__(self,filename=None,**keys):
         """initialize class.
@@ -82,6 +87,7 @@ class MyJSON2CSV(MyLoggingBase):
         self.csv_params = self.CSV_PARAMS_DEFAULT.copy()
         self.encoding = self.ENCODING_DEFAULT
         self.dt_format = self.DT_FORMAT_DEFAULT
+        self.null = self.NULL_DEFAULT
         self.missed_headers = set()
         self.datatypes = set()
         self._cur_row_num = 0
@@ -414,7 +420,8 @@ class MyJSON2CSV(MyLoggingBase):
             # yield all keys
             for k in obj:
                 # if is number or string, or an emtpy list/dict - yield key
-                if self._is_simple_object(obj[k]) or len(obj[k])==0:
+                if self._is_simple_object(obj[k]) or \
+                        isinstance(obj[k],datetime) or len(obj[k])==0:
                     yield k if name=='' else (name+'.'+k)
                 # if non-empty list
                 elif isinstance(obj[k], (list,tuple)):
@@ -511,7 +518,7 @@ class MyJSON2CSV(MyLoggingBase):
         self.datatypes.add(type(value))
         
         # None
-        if value == None: return ''
+        if value == None: return self.null
         # Simple (view '_is_simple_object' for details)
         elif self._is_simple_object(value): return self.apply_encoding(unicode(value))
         # dict
@@ -527,7 +534,7 @@ class MyJSON2CSV(MyLoggingBase):
             else: return ''
         # just in case...
         elif isinstance(value,datetime):
-            return ''
+            return value.strftime(self.dt_format)
         else:
             self.logger.warning('flattening for  datatype {} has not been explicitly set... using repr(...)'.format(type(value)))
             return repr(value)
