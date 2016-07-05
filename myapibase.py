@@ -23,6 +23,8 @@ class MyAPIBase(MyLoggingBase):
           There are a few key methods each API will need to override.
           
     CHANGELOG:
+    2016-07-05 v0.2.1: Elias Wood
+        MyError (abstract exception class) has response param to hold http(s) repsonse
     2016-06-21 v0.2.0: Elias Wood
         extracted_dt is now a datetime instead of a str!
     2016-06-21 v0.1.4: Elias Wood
@@ -40,7 +42,7 @@ class MyAPIBase(MyLoggingBase):
         First Version!!!
         
     """
-    __version__ = '0.1.4'
+    __version__ = '0.2.1'
     #===========================================================================
     # Variables
     #===========================================================================
@@ -289,17 +291,19 @@ class MyAPIBase(MyLoggingBase):
             self.logger.debug('%03d:%s?%s',self.__api_request_count,
                               url,'&'.join('{}={}'.format(k,v)
                                            for k,v in params.iteritems()))
+        
         r = self._session.get(url,params=params)
         
         self.after_api_call(try_count,url,params,r) # TO BE overridden fn
     
         # parse timestamp
         extracted_dt = datetime.datetime.strptime(r.headers['date'],
-                                                  '%a, %d %b %Y %H:%M:%S %Z')    
+                                                  '%a, %d %b %Y %H:%M:%S %Z')
         
         # did we hit the rate limit 'Too Many Requests'?
         if r.status_code == 429:
-            raise TooManyRequests('HTTP 429: Too Many Requests',code=429)
+            raise TooManyRequests('HTTP 429: Too Many Requests',code=429,
+                                  response=r)
         
         # error handling...
         #if r.status_code == 200: pass
@@ -442,10 +446,12 @@ class MyAPIBase(MyLoggingBase):
 # ERRORS that may be raised
 #===============================================================================
 class MyError(Exception):
-    """ Base error class to capture an optional arguemnt: code"""
+    """ Base error class to capture an optional arguemnt: code and response"""
     code = None
+    response = None
     def __init__(self,*args,**keys):
         self.code = keys.pop('code',None)
+        self.response = keys.pop('response',None)
         Exception.__init__(self,*args,**keys)
 
 class MaxRetryLimit(MyError):
