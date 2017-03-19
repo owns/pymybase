@@ -1,5 +1,5 @@
 """
-Elias Wood (owns13927@yahoo.com)
+@author: Elias Wood (owns13927@yahoo.com)
 2015-04-06
 a base class for all my classes to help with logging and timestamps
 """
@@ -7,8 +7,6 @@ import logging
 import os
 import sys
 import datetime
-
-import deprecated
 
 # python2 compatible
 try: s = basestring # @UndefinedVariable
@@ -199,7 +197,6 @@ class MyLoggingBase(object):
     #===========================================================================
     # Summary
     #===========================================================================
-    @deprecated.deprecated
     def _get_summary_info(self):
         """deprecated"""
         return self.get_summary_info()
@@ -208,7 +205,6 @@ class MyLoggingBase(object):
         """override to add useful summary info."""
         return []
     
-    @deprecated.deprecated
     def _log_summary_info(self,*args,**keys):
         """deprecated"""
         self.log_summary_info(*args,**keys)
