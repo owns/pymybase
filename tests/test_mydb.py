@@ -1,13 +1,13 @@
 """
 Elias Wood (owns13927@yahoo.com)
 2015-04-07
-unit test for mydb
+unit test for mydbbase
 """
 
 from testbase import TestBase
 import sys
 if '..' not in sys.path: sys.path.append('..') 
-from mydb import MyDb
+from mydbbase import MyDb
 
 #===============================================================================
 # Test MyDb
