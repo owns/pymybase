@@ -175,8 +175,10 @@ class MyLoggingBase(object):
     @staticmethod
     def get_resource_fd(filename=''):
         """pass a filename to join with the resource folder (handles frozen)"""
+        try: filepath =  sys._getframe(1).f_code.co_filename
+        except: filepath = __file__
         return os.path.join(os.path.dirname(
-                sys.executable if getattr(sys, 'frozen', False) else __file__
+                sys.executable if getattr(sys, 'frozen', False) else filepath
                 ),'resources',filename)
         #dir_name = os.path.join(os.path.realpath(''),) #__file__
         #return MyLoggingBase.join_folder_and_file(dir_name,filename)
@@ -184,9 +186,11 @@ class MyLoggingBase(object):
     @staticmethod
     def get_output_fd(filename=''):
         """pass a filename to join with the output folder (handles frozen)"""
+        try: filepath =  sys._getframe(1).f_code.co_filename
+        except: filepath = __file__
         return os.path.join(os.path.dirname(
-                sys.executable if getattr(sys, 'frozen', False) else __file__
-                ),'output',filename)
+                sys.executable if getattr(sys, 'frozen', False) else filepath
+            ),'output',filename)
     
     @staticmethod
     def join_folder_and_file(fd,filename=''):
@@ -299,9 +303,7 @@ if __name__ == '__main__':
     a = MyLoggingBase()
     
     a.logger.info('hello world')
-    a._get_summary_info()
-    a._get_summary_info()
-    a._log_summary_info()
+    a.get_output_fd()
     
     
     
