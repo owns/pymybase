@@ -39,6 +39,8 @@ class MyJSON2CSV(MyLoggingBase):
         DOESN'T CHECK TO MAKE SURE ALL KEYS (& SUB KEYS) ARE USED/EXPORTED!
     
     CHANGELOG:
+    2016-06-22 v1.1.2: Elias Wood
+        small bug fixes
     2016-06-22 v1.1.1: Elias Wood
         set default null
         also forgot to add formatting for datetime... just returned ''... ops.
@@ -51,7 +53,7 @@ class MyJSON2CSV(MyLoggingBase):
     #TODO: add check if we've missing anything (only top lvl ATM)!
     #TODO: add ability to handle lists! flatten lists!
     
-    __version__ = '1.0.0'
+    __version__ = '1.1.2'
     
     _filename = None
     _headers = None
@@ -466,7 +468,7 @@ class MyJSON2CSV(MyLoggingBase):
             if 'dict_fn' in loc:
                 try: a = loc['dict_fn'](d=obj,
                                         default=loc.get('default',default))
-                except Exception, e:
+                except Exception as e:
                     raise CustomColumnFunctionException(repr(loc)+'\n'+repr(e))
                 else: return a
             # ---------------- key_fn -----------------
@@ -475,7 +477,7 @@ class MyJSON2CSV(MyLoggingBase):
                                      value=MyJSON2CSV._get_item(obj,loc['key'],
                                                     loc.get('default',default)),
                                      default=loc.get('default'))
-                except Exception, e:
+                except Exception as e:
                     raise CustomColumnFunctionException(repr(loc)+'\n'+repr(e))
                 else: return a
             if 'eval' in loc:
@@ -485,7 +487,7 @@ class MyJSON2CSV(MyLoggingBase):
                 try:
                     eq = loc['vformat'](loc['eval'],tuple(), vals)
                     val = eval(eq,{},{})
-                except Exception, e:
+                except Exception as e:
                     if callable(loc.get('on_error')):
                         return loc['on_error'](e,loc,vals,eq)
                     else: return default
@@ -524,7 +526,7 @@ class MyJSON2CSV(MyLoggingBase):
         # dict
         elif isinstance(value, dict):
             if value: # non-empty
-                return self.apply_encodingI(json_dumps(value))
+                return self.apply_encoding(json_dumps(value))
                 #return ','.join(self.apply_encoding(k)+':'+self.apply_encoding(v) for k,v in value.iteritems())
             else: return ''
         # list

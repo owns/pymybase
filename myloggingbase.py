@@ -8,6 +8,13 @@ import os
 import sys
 import datetime
 
+import deprecated
+
+# python2 compatible
+try: s = basestring # @UndefinedVariable
+except NameError: basestring = str #@ReservedAssignment
+else: del s
+    
 class MyLoggingBase(object):
     """
     this 'abstract' base class is only
@@ -35,7 +42,7 @@ class MyLoggingBase(object):
     def __init__(self,name=None,*args,**keys):
         """name -- a str/unicode name of the logger (default: <class name>)"""
         object.__init__(self)
-        self.logger = logging.getLogger(name if isinstance(name,(unicode,str))
+        self.logger = logging.getLogger(name if isinstance(name,basestring)
                                         else self.__class__.__name__)
     
     #===========================================================================
@@ -105,10 +112,10 @@ class MyLoggingBase(object):
             h2.setLevel(logging.__getattribute__(console_log_lvl)) # @UndefinedVariable
             logging.getLogger().addHandler(h2)
         elif show_warning:
-            print '======================================='
-            print 'not showing log in console per request!'
-            print file_log_name
-            print '======================================='
+            print('=======================================')
+            print('not showing log in console per request!')
+            print(file_log_name)
+            print('=======================================')
             logging.warning('=======================================')
             logging.warning('not showing log in console per request!')
             logging.warning('=======================================')
@@ -186,12 +193,13 @@ class MyLoggingBase(object):
     @staticmethod
     def join_folder_and_file(fd,filename=''):
         """tests if folder/file exists. returns None if if doesn't, the filepath if successful!"""
-        p = os.path.join(fd,filename) if isinstance(filename,(str,unicode)) else fd
+        p = os.path.join(fd,filename) if isinstance(filename,basestring) else fd
         return p if os.path.exists(p) else None
         
     #===========================================================================
     # Summary
     #===========================================================================
+    @deprecated.deprecated
     def _get_summary_info(self):
         """deprecated"""
         return self.get_summary_info()
@@ -200,6 +208,7 @@ class MyLoggingBase(object):
         """override to add useful summary info."""
         return []
     
+    @deprecated.deprecated
     def _log_summary_info(self,*args,**keys):
         """deprecated"""
         self.log_summary_info(*args,**keys)
@@ -207,10 +216,10 @@ class MyLoggingBase(object):
     def log_summary_info(self,prepend=''):
         """call to log all important summary information."""
         if prepend:
-            for i in self._get_summary_info():
+            for i in self.get_summary_info():
                 self.logger.info('{!s}: {!s}'.format(prepend,i))
         else:
-            for i in self._get_summary_info():
+            for i in self.get_summary_info():
                 self.logger.info('{!s}'.format(i))
     
     
@@ -294,6 +303,9 @@ if __name__ == '__main__':
     a = MyLoggingBase()
     
     a.logger.info('hello world')
+    a._get_summary_info()
+    a._get_summary_info()
+    a._log_summary_info()
     
     
     

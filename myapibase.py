@@ -23,6 +23,8 @@ class MyAPIBase(MyLoggingBase):
           There are a few key methods each API will need to override.
           
     CHANGELOG:
+    2016-07-05 v0.2.2: Elias Wood
+        _make_api_call: exceptions are not all critical - just track #
     2016-07-05 v0.2.1: Elias Wood
         MyError (abstract exception class) has response param to hold http(s) repsonse
     2016-06-21 v0.2.0: Elias Wood
@@ -42,7 +44,7 @@ class MyAPIBase(MyLoggingBase):
         First Version!!!
         
     """
-    __version__ = '0.2.1'
+    __version__ = '0.2.2'
     #===========================================================================
     # Variables
     #===========================================================================
@@ -153,7 +155,7 @@ class MyAPIBase(MyLoggingBase):
         try:
             self.__requests_get_count += 1
             r = self._session.get(*args,**keys)
-        except Exception, e:
+        except Exception as e:
             self.__requests_error_count += 1
             raise e
         else: return r
@@ -230,7 +232,7 @@ class MyAPIBase(MyLoggingBase):
     def default_url_append(self,path,params):
         """override if your url just requires some addition to the path
         if it doesn't start with /"""
-        return ''
+        return '/'
     
     def _format_call_params(self,path,params):
         """override to format the url or params in a very custom way...
@@ -339,7 +341,7 @@ class MyAPIBase(MyLoggingBase):
             #=======================================================================
             # if it's a connection issue, wait some and try again.
             except (requests.exceptions.ChunkedEncodingError,
-                    requests.ConnectionError), e:
+                    requests.ConnectionError) as e:
                 self.__requests_error_count += 1
                 #RETRY_CONNECTION_TIME
                 self.logger.warn('connection error - waiting %ds. %r',
@@ -352,12 +354,12 @@ class MyAPIBase(MyLoggingBase):
                     requests.URLRequired,requests.TooManyRedirects,
                     requests.HTTPError) as e:
                 self.__requests_error_count += 1
-                self.logger.critical('error: %r',e)
+                #self.logger.critical('error: %r',e)
                 raise e
             
-            except Exception, e:
+            except Exception as e:
                 self.__requests_error_count += 1
-                self.logger.critical('error: %r',e)
+                #self.logger.critical('error: %r',e)
                 raise e
             
             else:
@@ -462,4 +464,14 @@ class TooManyRequests(MyError):
     
 class InvalidAuth(MyError):
     """ raise if auth failed has issues """
+
+class ServiceUnavailable(MyError):
+    """ Originally from Twitter: Service unavailable due to request timeout;
+    please try the request again later """
     
+class FeatureNotAvailable(MyError):
+    """ Originally from Twitter: The account does not have the feature
+    REACH_AND_FREQUENCY_ANALYTICS """
+
+class InvalidRequest(MyError):
+    """ First used in InContact: api request failed """
