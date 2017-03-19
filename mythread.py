@@ -1,7 +1,7 @@
 """
 Elias Wood (owns13927@yahoo.com)
 2015-03-20
-a base thread class for doing jobs, to work with a mydb instance
+a base thread class for doing jobs, to work with a mydbbase instance
 shared by all workers
 """
 from myloggingbase import MyLoggingBase
