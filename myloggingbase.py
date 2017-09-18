@@ -9,10 +9,10 @@ import sys
 import datetime
 
 # python2 compatible
-try: s = basestring # @UndefinedVariable
-except NameError: basestring = str #@ReservedAssignment
+try: s = basestring # @UndefinedVariable pylint: disable=invalid-name
+except NameError: basestring = str #@ReservedAssignment pylint: disable=invalid-name
 else: del s
-    
+
 class MyLoggingBase(object):
     """
     this 'abstract' base class is only
@@ -34,17 +34,17 @@ class MyLoggingBase(object):
     __version__ = '0.3.0'
     _TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
     logger = None
-    
-    
-    
-    def __init__(self,name=None,*args,**keys):
+
+
+
+    def __init__(self,name=None,*args,**keys):  #@UnusedVariable pylint: disable=unused-argument
         """name -- a str/unicode name of the logger (default: <class name>)"""
         object.__init__(self)
         self.logger = logging.getLogger(name if isinstance(name,basestring)
                                         else self.__class__.__name__)
-    
+
     #===========================================================================
-    # Logging 
+    # Logging
     #===========================================================================
     def set_logger_level(self,lvl):
         """Set the logging level for the class.  Returns True if set correctly."""
@@ -53,17 +53,17 @@ class MyLoggingBase(object):
                        logging.ERROR,logging.CRITICAL):
                 self.logger.setLevel(lvl)
                 return True
-            else: return False
+            return False
 
     def logger_enabled(self):
         """duplicate function for convenience"""
-        return self.log_set()
+        return self.logger_set()
 
     def logger_set(self):
         """Returns True if the .logger is set and there are handlers
         (somewhere to output to) for logging; False otherwise."""
-        return (self.logger is not None and len(logging._handlers) != 0)
-    
+        return self.logger is not None and len(logging.handlers) != 0
+
     @staticmethod
     def init_logging(**keys):
         """
@@ -78,37 +78,40 @@ class MyLoggingBase(object):
         file_log_lvl = keys.get('file_log_lvl','DEBUG')
         console_log_lvl = keys.get('console_log_lvl','DEBUG')
         show_warning = keys.get('show_warning',True)
-            
+
         # raise error if bad value passed
         valid_log_lvls = (None,'DEBUG','INFO','WARNING','ERROR','CRITICAL')
         if file_log_lvl not in valid_log_lvls:
             raise ValueError('bad param passed for file_log_lvl {0!r}'.format(file_log_lvl))
         if console_log_lvl not in valid_log_lvls:
             raise ValueError('bad param passed for console_log_lvl {0!r}'.format(console_log_lvl))
-               
+
         # set logging level
         logging.getLogger().setLevel(logging.DEBUG)
-            
+
         # create logging formatter .%(msecs)-3d
-        f = '%(asctime)-23s:%(threadName)-10s:%(levelname)-7s:%(name)s.%(funcName)s:%(message)s'
-        log_formatter = logging.Formatter(f)
-            
+        fmt = '%(asctime)-23s:%(threadName)-10s:%(levelname)-7s:%(name)s.%(funcName)s:%(message)s'
+        log_formatter = logging.Formatter(fmt)
+
         # create handlers based on request
         if file_log_lvl:
             # add file handler
-            if file_log_name==None: file_log_name = MyLoggingBase.get_output_fd('log{}.log'.format(MyLoggingBase.get_current_timestamp(for_file=True)))
-            h = logging.FileHandler(file_log_name)#,mode='w') #to not append for the day
-            h.setLevel(logging.__getattribute__(file_log_lvl)) # @UndefinedVariable
-            h.setFormatter(log_formatter)
-            logging.getLogger().addHandler(h)
-                
+            if file_log_name is None:
+                file_log_name = MyLoggingBase.get_output_fd(
+                    'log{}.log'.format(MyLoggingBase.get_current_timestamp(for_file=True))
+                )
+            fhndl = logging.FileHandler(file_log_name)#,mode='w') #to not append for the day
+            fhndl.setLevel(logging.__getattribute__(file_log_lvl))  #@UndefinedVariable pylint: disable=no-member
+            fhndl.setFormatter(log_formatter)
+            logging.getLogger().addHandler(fhndl)
+
         if console_log_lvl:
             # add console handler
             #import sys
-            h2 = logging.StreamHandler(sys.stdout) # to change the coloring! from stderr to stdout
-            h2.setFormatter(log_formatter)
-            h2.setLevel(logging.__getattribute__(console_log_lvl)) # @UndefinedVariable
-            logging.getLogger().addHandler(h2)
+            shndl = logging.StreamHandler(sys.stdout) # change the coloring! from stderr to stdout
+            shndl.setFormatter(log_formatter)
+            shndl.setLevel(logging.__getattribute__(console_log_lvl)) #@UndefinedVariable pylint: disable=no-member
+            logging.getLogger().addHandler(shndl)
         elif show_warning:
             print('=======================================')
             print('not showing log in console per request!')
@@ -117,7 +120,7 @@ class MyLoggingBase(object):
             logging.warning('=======================================')
             logging.warning('not showing log in console per request!')
             logging.warning('=======================================')
-            
+
         if not file_log_lvl and show_warning:
             logging.warning('=======================================')
             logging.warning('= not saving log to file per request! =')
@@ -131,7 +134,7 @@ class MyLoggingBase(object):
             logging.critical('%s: %s',exctype,exc.message)
         sys.excepthook = exception_hook
         '''
-    
+
     #===========================================================================
     # static method for filling a dict with Nones where needed...
     #===========================================================================
@@ -148,7 +151,7 @@ class MyLoggingBase(object):
         for key in keys: MyLoggingBase._fill_dict(d,key,val)
         d.update(updates)
         return d
-        
+
     @staticmethod
     def _fill_dict(d,key,val):
         """
@@ -162,12 +165,12 @@ class MyLoggingBase(object):
             d.setdefault(key,val)
         else:
             if d.get(key[:a]) is None: d[key[:a]] = dict()
-            
+
             if not isinstance(d[key[:a]],dict):
                 raise ValueError('the key {!r} is invalid. top value is type {}, not a dict!'.format(key,type(d[key[:a]])))
-            
+
             MyLoggingBase._fill_dict(d[key[:a]],key[a+1:],val)
-    
+
     #===============================================================================
     # get/join with project folders
     #===============================================================================
@@ -182,7 +185,7 @@ class MyLoggingBase(object):
                 ),'resources',filename)
         #dir_name = os.path.join(os.path.realpath(''),) #__file__
         #return MyLoggingBase.join_folder_and_file(dir_name,filename)
-    
+
     @staticmethod
     def get_output_fd(filename=''):
         """pass a filename to join with the output folder (handles frozen)"""
@@ -191,38 +194,38 @@ class MyLoggingBase(object):
         return os.path.join(os.path.dirname(
                 sys.executable if getattr(sys, 'frozen', False) else filepath
             ),'output',filename)
-    
+
     @staticmethod
     def join_folder_and_file(fd,filename=''):
         """tests if folder/file exists. returns None if if doesn't, the filepath if successful!"""
         p = os.path.join(fd,filename) if isinstance(filename,basestring) else fd
         return p if os.path.exists(p) else None
-        
+
     #===========================================================================
     # Summary
     #===========================================================================
     def _get_summary_info(self):
         """deprecated"""
         return self.get_summary_info()
-    
+
     def get_summary_info(self):
         """override to add useful summary info."""
         return []
-    
+
     def _log_summary_info(self,*args,**keys):
         """deprecated"""
         self.log_summary_info(*args,**keys)
-    
+
     def log_summary_info(self,prepend=''):
         """call to log all important summary information."""
         if prepend:
             for i in self.get_summary_info():
-                self.logger.info('{!s}: {!s}'.format(prepend,i))
+                self.logger.info('%s: %s',prepend,i)
         else:
             for i in self.get_summary_info():
-                self.logger.info('{!s}'.format(i))
-    
-    
+                self.logger.info('%s',i)
+
+
     #===========================================================================
     # Timestamp
     #===========================================================================
@@ -231,21 +234,21 @@ class MyLoggingBase(object):
         """Helper function for getting the current datetime.
         param utc: If False, returns the time based on the current timezone.
                    If True, returns the UTC time."""
-        d = datetime.datetime.utcnow() if utc else datetime.datetime.now()
-        if add_sec: return d+datetime.timedelta(seconds=add_sec)
-        else: return d
-    
+        current_time = datetime.datetime.utcnow() if utc else datetime.datetime.now()
+        if add_sec: return current_time+datetime.timedelta(seconds=add_sec)
+        else: return current_time
+
     @staticmethod
     def datetime_to_timestamp(dt,for_file=False,dt_format=None,add_sec=0):
         """Formats the datetime passed to ISO 8601 string.
         for_file -- if True, replaces colons with periods."""
         if dt_format is None: dt_format = MyLoggingBase._TIMESTAMP_FORMAT
         s = (dt_format.replace(':','.') if for_file else dt_format)
-        
+
         if add_sec: dt += datetime.timedelta(seconds=add_sec)
         # only accurate to 3 for win8.1, but 6 given (for after sec)
         return dt.strftime(s)
-    
+
     @staticmethod
     def get_current_timestamp(utc=False,add_sec=0,
                               for_file=False,dt_format=None):
@@ -254,26 +257,26 @@ class MyLoggingBase(object):
         return MyLoggingBase.datetime_to_timestamp(
                     MyLoggingBase.get_current_datetime(utc=utc,add_sec=add_sec),
                     for_file=for_file,dt_format=dt_format)
-    
+
     #===========================================================================
     # Reading/Writing key-value pairing files
     #===========================================================================
     @staticmethod
-    def read_file_key_values(filename,*keys):
+    def read_file_key_values(filename,*keys):  # @UnusedVariable pylint: disable=unused-argument
         """reads the file (filename) and returns the key-
         value pairing (a dictionary).  keys is not used"""
         ret = dict() #{i:None for i in keys}
-        
+
         try:
             with open(filename,'r') as r:
                 # get all key-value pairs from the file, line-by-line
                 for key,value in (l.rstrip().split('=',1) for l in r if '=' in l):
-                    # if no argments are passed or the key is one we're looking for
+                    # if no arguments are passed or the key is one we're looking for
                     #if not keys or key in ret:
                     ret[key] = value
         except IOError: pass
         return ret
-    
+
     @staticmethod
     def write_file_key_values(filename,overwrite_file=True,**keys):
         """writes the key-value pairing passed (**keys) to the
@@ -283,15 +286,15 @@ class MyLoggingBase(object):
         """
         # overwrite?
         if not overwrite_file and os.path.exists(filename): return False
-        
+
         # open the file
         try:
             with open(filename,'wb') as w:
-                w.writelines(('{}={}\n'.format(k,v) for k,v in keys.iteritems()
+                w.writelines(('{}={}\n'.format(k,v) for k,v in keys.items()
                               if v is not None))
         except IOError: return False
         else: return True
-    
+
 #===============================================================================
 # Main
 #===============================================================================
@@ -300,10 +303,10 @@ if __name__ == '__main__':
     #except ImportError: print 'no test for myloggingbase'
     #else: tests.test_myloggingbase.run_test()
     MyLoggingBase.init_logging(file_log_lvl=None)
-    a = MyLoggingBase()
-    
-    a.logger.info('hello world')
-    a.get_output_fd()
+    BASE_LOGGER = MyLoggingBase()
+
+    BASE_LOGGER.logger.info('hello world')
+    BASE_LOGGER.get_output_fd()
     
     
     
