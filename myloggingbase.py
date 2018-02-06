@@ -28,6 +28,8 @@ class MyLoggingBase(object):
     It also has some static timestamp things...
     NOTE: get_output_fd & get_resource_fd use cwd!
     CHANGELOG:
+    2018-02-06 v0.4.0: Elias Wood
+        logging uses rotating file handler
     2016-05-27 v0.3.0: Elias Wood
         updated get/join project folders to handle if frozen (cx_frozen)
     """
@@ -100,7 +102,12 @@ class MyLoggingBase(object):
                 file_log_name = MyLoggingBase.get_output_fd(
                     'log{}.log'.format(MyLoggingBase.get_current_timestamp(for_file=True))
                 )
-            fhndl = logging.FileHandler(file_log_name)#,mode='w') #to not append for the day
+            #fhndl = logging.FileHandler(file_log_name)#,mode='w') #to not append for the day
+            fhndl = logging.handlers.RotatingFileHandler(
+                file_log_name,
+                mode='a',
+                maxBytes=10*1024*1024,
+                backupCount=3)
             fhndl.setLevel(logging.__getattribute__(file_log_lvl))  #@UndefinedVariable pylint: disable=no-member
             fhndl.setFormatter(log_formatter)
             logging.getLogger().addHandler(fhndl)
@@ -139,7 +146,7 @@ class MyLoggingBase(object):
     # static method for filling a dict with Nones where needed...
     #===========================================================================
     @staticmethod
-    def fill_dict(d,keys,val=None,**updates):
+    def fill_dict(d,keys,val=None,**updates):  #pylint: disable=invalid-name
         """
         fills the dictionary (d) with None for each key in keys.
         val: what to fill the each key with.
@@ -153,7 +160,7 @@ class MyLoggingBase(object):
         return d
 
     @staticmethod
-    def _fill_dict(d,key,val):
+    def _fill_dict(d,key,val):  #pylint: disable=invalid-name
         """
         helper function to populate individual key.
         d: a dictionary
@@ -167,7 +174,9 @@ class MyLoggingBase(object):
             if d.get(key[:a]) is None: d[key[:a]] = dict()
 
             if not isinstance(d[key[:a]],dict):
-                raise ValueError('the key {!r} is invalid. top value is type {}, not a dict!'.format(key,type(d[key[:a]])))
+                raise ValueError(
+                    'the key {!r} is invalid. top value is type {}, not a dict!'.format(
+                        key,type(d[key[:a]])))
 
             MyLoggingBase._fill_dict(d[key[:a]],key[a+1:],val)
 
@@ -178,8 +187,8 @@ class MyLoggingBase(object):
     @staticmethod
     def get_resource_fd(filename=''):
         """pass a filename to join with the resource folder (handles frozen)"""
-        try: filepath =  sys._getframe(1).f_code.co_filename
-        except: filepath = __file__
+        try: filepath =  sys._getframe(1).f_code.co_filename  #pylint: disable=protected-access
+        except: filepath = __file__  #pylint: disable=bare-except
         return os.path.join(os.path.dirname(
                 sys.executable if getattr(sys, 'frozen', False) else filepath
                 ),'resources',filename)
@@ -189,8 +198,8 @@ class MyLoggingBase(object):
     @staticmethod
     def get_output_fd(filename=''):
         """pass a filename to join with the output folder (handles frozen)"""
-        try: filepath =  sys._getframe(1).f_code.co_filename
-        except: filepath = __file__
+        try: filepath =  sys._getframe(1).f_code.co_filename  #pylint: disable=protected-access
+        except: filepath = __file__  #pylint: disable=bare-except
         return os.path.join(os.path.dirname(
                 sys.executable if getattr(sys, 'frozen', False) else filepath
             ),'output',filename)
@@ -198,8 +207,8 @@ class MyLoggingBase(object):
     @staticmethod
     def join_folder_and_file(fd,filename=''):
         """tests if folder/file exists. returns None if if doesn't, the filepath if successful!"""
-        p = os.path.join(fd,filename) if isinstance(filename,basestring) else fd
-        return p if os.path.exists(p) else None
+        path = os.path.join(fd,filename) if isinstance(filename,basestring) else fd
+        return path if os.path.exists(path) else None
 
     #===========================================================================
     # Summary
@@ -208,7 +217,7 @@ class MyLoggingBase(object):
         """deprecated"""
         return self.get_summary_info()
 
-    def get_summary_info(self):
+    def get_summary_info(self):  #pylint: disable=no-self-use
         """override to add useful summary info."""
         return []
 
@@ -235,19 +244,19 @@ class MyLoggingBase(object):
         param utc: If False, returns the time based on the current timezone.
                    If True, returns the UTC time."""
         current_time = datetime.datetime.utcnow() if utc else datetime.datetime.now()
-        if add_sec: return current_time+datetime.timedelta(seconds=add_sec)
-        else: return current_time
+        if add_sec: current_time += datetime.timedelta(seconds=add_sec)
+        return current_time
 
     @staticmethod
-    def datetime_to_timestamp(dt,for_file=False,dt_format=None,add_sec=0):
+    def datetime_to_timestamp(dt,for_file=False,dt_format=None,add_sec=0):  #pylint: disable=invalid-name
         """Formats the datetime passed to ISO 8601 string.
         for_file -- if True, replaces colons with periods."""
         if dt_format is None: dt_format = MyLoggingBase._TIMESTAMP_FORMAT
-        s = (dt_format.replace(':','.') if for_file else dt_format)
+        if for_file: dt_format = dt_format.replace(':','.')
 
         if add_sec: dt += datetime.timedelta(seconds=add_sec)
         # only accurate to 3 for win8.1, but 6 given (for after sec)
-        return dt.strftime(s)
+        return dt.strftime(dt_format)
 
     @staticmethod
     def get_current_timestamp(utc=False,add_sec=0,
@@ -307,8 +316,3 @@ if __name__ == '__main__':
 
     BASE_LOGGER.logger.info('hello world')
     BASE_LOGGER.get_output_fd()
-    
-    
-    
-    
-    
