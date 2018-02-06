@@ -13,6 +13,7 @@ base things...
 
 __all__ = ['MyLoggingBase','MyJSON2CSV','MyAPIBase','MyDbBase','MyThread']
 
-__author__  = "Elias Wood <owns13927@yahoo.com>"
-__version__ = "0.9.0"
-__date__    = "2017-03-25"
+__title__ = 'pymybase'
+__author__  = 'Elias Wood <owns13927@yahoo.com>'
+__version__ = '0.9.0'
+__date__    = '2017-03-25'

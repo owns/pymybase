@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 @author: Elias Wood (owns13927@yahoo.com)
 2015-04-06
@@ -33,7 +34,7 @@ class MyLoggingBase(object):
     2016-05-27 v0.3.0: Elias Wood
         updated get/join project folders to handle if frozen (cx_frozen)
     """
-    __version__ = '0.3.0'
+    __version__ = '0.4.0'
     _TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
     logger = None
 

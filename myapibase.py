@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Elias Wood (owns13927@yahoo.com)
 2015-04-06

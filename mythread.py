@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Elias Wood (owns13927@yahoo.com)
 2015-03-20
@@ -430,6 +431,6 @@ class MyThread(MyLoggingBase,threading.Thread):
 #===============================================================================
 if __name__ == '__main__':
     try: from tests import test_mythread
-    except ImportError: print 'no test for mythread'
+    except ImportError: print('no test for mythread')
     else: test_mythread.run_test()
     
