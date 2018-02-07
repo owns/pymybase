@@ -31,6 +31,8 @@ class MyLoggingBase(object):
     CHANGELOG:
     2018-02-06 v0.4.0: Elias Wood
         logging uses rotating file handler
+        several methods to @classmethod
+        small changes
     2016-05-27 v0.3.0: Elias Wood
         updated get/join project folders to handle if frozen (cx_frozen)
     """
@@ -67,8 +69,8 @@ class MyLoggingBase(object):
         (somewhere to output to) for logging; False otherwise."""
         return self.logger is not None and len(logging.handlers) != 0
 
-    @staticmethod
-    def init_logging(**keys):
+    @classmethod
+    def init_logging(cls,**keys):
         """
         file_log_name=None  # name of log file (defaults to output dir)
         file_log_lvl='DEBUG'  # level to log in file (None to not log to file)
@@ -98,14 +100,20 @@ class MyLoggingBase(object):
 
         # create handlers based on request
         if file_log_lvl:
-            # add file handler
-            if file_log_name is None:
-                file_log_name = MyLoggingBase.get_output_fd(
-                    'log{}.log'.format(MyLoggingBase.get_current_timestamp(for_file=True))
-                )
+            # --- add file handler ---
+            # set default name
+            if file_log_name is None: file_log_name = 'log.log'
+            # set default directory
+            directory = os.path.dirname(file_log_name)
+            if directory == '':
+                file_log_name = cls._get_output_fd(file_log_name)
+                directory = os.path.dirname(file_log_name)
+            # create parent directory(s) if needed
+            if not os.path.exists(directory): os.makedirs(directory)
             #fhndl = logging.FileHandler(file_log_name)#,mode='w') #to not append for the day
-            fhndl = logging.handlers.RotatingFileHandler(
-                file_log_name,
+            from logging.handlers import RotatingFileHandler
+            fhndl = RotatingFileHandler(
+                filename = file_log_name,
                 mode='a',
                 maxBytes=10*1024*1024,
                 backupCount=3)
@@ -146,8 +154,8 @@ class MyLoggingBase(object):
     #===========================================================================
     # static method for filling a dict with Nones where needed...
     #===========================================================================
-    @staticmethod
-    def fill_dict(d,keys,val=None,**updates):  #pylint: disable=invalid-name
+    @classmethod
+    def fill_dict(cls,d,keys,val=None,**updates):  #pylint: disable=invalid-name
         """
         fills the dictionary (d) with None for each key in keys.
         val: what to fill the each key with.
@@ -156,37 +164,37 @@ class MyLoggingBase(object):
         NOTE: for sub-dict values needed, key.skey.... --> d[key][skey]...
         NOTE: this means a key of 'key.name' is invalid!!!
         """
-        for key in keys: MyLoggingBase._fill_dict(d,key,val)
+        for key in keys: cls._fill_dict(d,key,val)
         d.update(updates)
         return d
 
-    @staticmethod
-    def _fill_dict(d,key,val):  #pylint: disable=invalid-name
+    @classmethod
+    def _fill_dict(cls,d,key,val):  #pylint: disable=invalid-name
         """
         helper function to populate individual key.
         d: a dictionary
         key: a string
         val: the default value
         """
-        a = key.find('.')
-        if a == -1:
+        ind = key.find('.')
+        if ind == -1:
             d.setdefault(key,val)
         else:
-            if d.get(key[:a]) is None: d[key[:a]] = dict()
+            if d.get(key[:ind]) is None: d[key[:ind]] = dict()
 
-            if not isinstance(d[key[:a]],dict):
+            if not isinstance(d[key[:ind]],dict):
                 raise ValueError(
                     'the key {!r} is invalid. top value is type {}, not a dict!'.format(
-                        key,type(d[key[:a]])))
+                        key,type(d[key[:ind]])))
 
-            MyLoggingBase._fill_dict(d[key[:a]],key[a+1:],val)
+            cls._fill_dict(d[key[:ind]],key[ind+1:],val)
 
     #===============================================================================
     # get/join with project folders
     #===============================================================================
     # NOTE: __file__ will still reference this loc..., assuming working dir...
-    @staticmethod
-    def get_resource_fd(filename=''):
+    @classmethod
+    def get_resource_fd(cls,filename=''):
         """pass a filename to join with the resource folder (handles frozen)"""
         try: filepath =  sys._getframe(1).f_code.co_filename  #pylint: disable=protected-access
         except: filepath = __file__  #pylint: disable=bare-except
@@ -194,21 +202,25 @@ class MyLoggingBase(object):
                 sys.executable if getattr(sys, 'frozen', False) else filepath
                 ),'resources',filename)
         #dir_name = os.path.join(os.path.realpath(''),) #__file__
-        #return MyLoggingBase.join_folder_and_file(dir_name,filename)
+        #return cls.join_folder_and_file(dir_name,filename)
 
-    @staticmethod
-    def get_output_fd(filename=''):
+    @classmethod
+    def get_output_fd(cls,filename=''):
         """pass a filename to join with the output folder (handles frozen)"""
-        try: filepath =  sys._getframe(1).f_code.co_filename  #pylint: disable=protected-access
+        return cls._get_output_fd(filename=filename)
+    @classmethod
+    def _get_output_fd(cls,filename='', call_depth=2):
+        """get the output folder, depth > 1"""
+        try: filepath =  sys._getframe(call_depth).f_code.co_filename  #pylint: disable=protected-access
         except: filepath = __file__  #pylint: disable=bare-except
         return os.path.join(os.path.dirname(
                 sys.executable if getattr(sys, 'frozen', False) else filepath
             ),'output',filename)
 
-    @staticmethod
-    def join_folder_and_file(fd,filename=''):
+    @classmethod
+    def join_folder_and_file(cls,folder, filename=''):
         """tests if folder/file exists. returns None if if doesn't, the filepath if successful!"""
-        path = os.path.join(fd,filename) if isinstance(filename,basestring) else fd
+        path = os.path.join(folder, filename) if isinstance(filename,basestring) else folder
         return path if os.path.exists(path) else None
 
     #===========================================================================
@@ -248,24 +260,24 @@ class MyLoggingBase(object):
         if add_sec: current_time += datetime.timedelta(seconds=add_sec)
         return current_time
 
-    @staticmethod
-    def datetime_to_timestamp(dt,for_file=False,dt_format=None,add_sec=0):  #pylint: disable=invalid-name
+    @classmethod
+    def datetime_to_timestamp(cls,dt,for_file=False,dt_format=None,add_sec=0):  #pylint: disable=invalid-name
         """Formats the datetime passed to ISO 8601 string.
         for_file -- if True, replaces colons with periods."""
-        if dt_format is None: dt_format = MyLoggingBase._TIMESTAMP_FORMAT
+        if dt_format is None: dt_format = cls._TIMESTAMP_FORMAT
         if for_file: dt_format = dt_format.replace(':','.')
 
         if add_sec: dt += datetime.timedelta(seconds=add_sec)
         # only accurate to 3 for win8.1, but 6 given (for after sec)
         return dt.strftime(dt_format)
 
-    @staticmethod
-    def get_current_timestamp(utc=False,add_sec=0,
+    @classmethod
+    def get_current_timestamp(cls,utc=False,add_sec=0,
                               for_file=False,dt_format=None):
         """Formats the current time (using datetime.datetime.now) to ISO 8601.
         for_file -- if True, replaces colons with periods."""
-        return MyLoggingBase.datetime_to_timestamp(
-                    MyLoggingBase.get_current_datetime(utc=utc,add_sec=add_sec),
+        return cls.datetime_to_timestamp(
+                    cls.get_current_datetime(utc=utc,add_sec=add_sec),
                     for_file=for_file,dt_format=dt_format)
 
     #===========================================================================
@@ -278,9 +290,9 @@ class MyLoggingBase(object):
         ret = dict() #{i:None for i in keys}
 
         try:
-            with open(filename,'r') as r:
+            with open(filename,'r') as reader:
                 # get all key-value pairs from the file, line-by-line
-                for key,value in (l.rstrip().split('=',1) for l in r if '=' in l):
+                for key,value in (l.rstrip().split('=',1) for l in reader if '=' in l):
                     # if no arguments are passed or the key is one we're looking for
                     #if not keys or key in ret:
                     ret[key] = value
@@ -299,8 +311,8 @@ class MyLoggingBase(object):
 
         # open the file
         try:
-            with open(filename,'wb') as w:
-                w.writelines(('{}={}\n'.format(k,v) for k,v in keys.items()
+            with open(filename,'wb') as writer:
+                writer.writelines(('{}={}\n'.format(k,v) for k,v in keys.items()
                               if v is not None))
         except IOError: return False
         else: return True
@@ -312,7 +324,8 @@ if __name__ == '__main__':
     #try: import tests.test_myloggingbase
     #except ImportError: print 'no test for myloggingbase'
     #else: tests.test_myloggingbase.run_test()
-    MyLoggingBase.init_logging(file_log_lvl=None)
+    MyLoggingBase.init_logging(file_log_lvl='DEBUG',
+                               file_log_name=os.path.basename(__file__)+'.log')
     BASE_LOGGER = MyLoggingBase()
 
     BASE_LOGGER.logger.info('hello world')
