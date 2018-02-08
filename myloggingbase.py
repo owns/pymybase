@@ -196,26 +196,22 @@ class MyLoggingBase(object):
     @classmethod
     def get_resource_fd(cls,filename=''):
         """pass a filename to join with the resource folder (handles frozen)"""
-        try: filepath =  sys._getframe(1).f_code.co_filename  #pylint: disable=protected-access
-        except: filepath = __file__  #pylint: disable=bare-except
-        return os.path.join(os.path.dirname(
-                sys.executable if getattr(sys, 'frozen', False) else filepath
-                ),'resources',filename)
         #dir_name = os.path.join(os.path.realpath(''),) #__file__
         #return cls.join_folder_and_file(dir_name,filename)
+        return cls._get_output_fd(filename=filename,fd='resources',call_depth=2)
 
     @classmethod
     def get_output_fd(cls,filename=''):
         """pass a filename to join with the output folder (handles frozen)"""
-        return cls._get_output_fd(filename=filename)
+        return cls._get_output_fd(filename=filename,fd='output',call_depth=2)
     @classmethod
-    def _get_output_fd(cls,filename='', call_depth=2):
+    def _get_output_fd(cls,filename='', fd='', call_depth=2):
         """get the output folder, depth > 1"""
         try: filepath =  sys._getframe(call_depth).f_code.co_filename  #pylint: disable=protected-access
         except: filepath = __file__  #pylint: disable=bare-except
         return os.path.join(os.path.dirname(
                 sys.executable if getattr(sys, 'frozen', False) else filepath
-            ),'output',filename)
+            ),fd,filename)
 
     @classmethod
     def join_folder_and_file(cls,folder, filename=''):
