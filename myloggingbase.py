@@ -42,7 +42,7 @@ class MyLoggingBase(object):
 
 
 
-    def __init__(self,name=None,*args,**keys):  #@UnusedVariable pylint: disable=unused-argument
+    def __init__(self,name=None,**keys):  #@UnusedVariable pylint: disable=unused-argument
         """name -- a str/unicode name of the logger (default: <class name>)"""
         object.__init__(self)
         self.logger = logging.getLogger(name if isinstance(name,basestring)
@@ -106,7 +106,7 @@ class MyLoggingBase(object):
             # set default directory
             directory = os.path.dirname(file_log_name)
             if directory == '':
-                file_log_name = cls._get_output_fd(file_log_name)
+                file_log_name = cls._get_fd(filename=file_log_name,fd='output',call_depth=2)
                 directory = os.path.dirname(file_log_name)
             # create parent directory(s) if needed
             if not os.path.exists(directory): os.makedirs(directory)
@@ -198,14 +198,14 @@ class MyLoggingBase(object):
         """pass a filename to join with the resource folder (handles frozen)"""
         #dir_name = os.path.join(os.path.realpath(''),) #__file__
         #return cls.join_folder_and_file(dir_name,filename)
-        return cls._get_output_fd(filename=filename,fd='resources',call_depth=2)
+        return cls._get_fd(filename=filename,fd='resources',call_depth=2)
 
     @classmethod
     def get_output_fd(cls,filename=''):
         """pass a filename to join with the output folder (handles frozen)"""
-        return cls._get_output_fd(filename=filename,fd='output',call_depth=2)
+        return cls._get_fd(filename=filename,fd='output',call_depth=2)
     @classmethod
-    def _get_output_fd(cls,filename='', fd='', call_depth=2):
+    def _get_fd(cls,filename='', fd='', call_depth=2):
         """get the output folder, depth > 1"""
         try: filepath =  sys._getframe(call_depth).f_code.co_filename  #pylint: disable=protected-access
         except: filepath = __file__  #pylint: disable=bare-except
