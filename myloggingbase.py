@@ -307,7 +307,7 @@ class MyLoggingBase(object):
 
         # open the file
         try:
-            with open(filename,'wb') as writer:
+            with open(filename,'w') as writer:
                 writer.writelines(('{}={}\n'.format(k,v) for k,v in keys.items()
                               if v is not None))
         except IOError: return False
