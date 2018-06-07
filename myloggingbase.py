@@ -29,6 +29,13 @@ class MyLoggingBase(object):
     It also has some static timestamp things...
     NOTE: get_output_fd & get_resource_fd use cwd!
     CHANGELOG:
+    2018-06-07 v0.5.0: Elias Wood
+        change __init__(name) var to logger_name
+        removed unnecessary logging functions (logger_enabled,logger_set,init_logging)
+            use http://docs.python-guide.org/en/latest/writing/logging/
+        _TIMESTAMP_FORMAT to TIMESTAMP_FORMAT
+        added config_file to init_logging
+        replaced join_folder_and_file with path_exists and returns abs path
     2018-02-06 v0.4.0: Elias Wood
         logging uses rotating file handler
         several methods to @classmethod
@@ -36,39 +43,33 @@ class MyLoggingBase(object):
     2016-05-27 v0.3.0: Elias Wood
         updated get/join project folders to handle if frozen (cx_frozen)
     """
-    __version__ = '0.4.0'
-    _TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
+    __version__ = '0.5.0'
+    TIMESTAMP_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
     logger = None
 
 
-
-    def __init__(self,name=None,**keys):  #@UnusedVariable pylint: disable=unused-argument
+    def __init__(self,logger_name=None,**keys):  #@UnusedVariable pylint: disable=unused-argument
         """name -- a str/unicode name of the logger (default: <class name>)"""
         object.__init__(self)
-        self.logger = logging.getLogger(name if isinstance(name,basestring)
+        # init logger
+        self.logger = logging.getLogger(logger_name if isinstance(logger_name,basestring)
                                         else self.__class__.__name__)
-
+        # add null handler if none exists to avoid "No handler found" warnings.
+        if not self.logger.handlers:
+            try:  # Python 2.7+
+                from logging import NullHandler
+            except ImportError:
+                class NullHandler(logging.Handler):
+                    def emit(self, record):
+                        pass
+            self.logger.addHandler(NullHandler())
+    
     #===========================================================================
     # Logging
     #===========================================================================
-    def set_logger_level(self,lvl):
-        """Set the logging level for the class.  Returns True if set correctly."""
-        if self.logger_set():
-            if lvl in (logging.DEBUG,logging.INFO,logging.WARNING,
-                       logging.ERROR,logging.CRITICAL):
-                self.logger.setLevel(lvl)
-                return True
-            return False
-
-    def logger_enabled(self):
-        """duplicate function for convenience"""
-        return self.logger_set()
-
-    def logger_set(self):
-        """Returns True if the .logger is set and there are handlers
-        (somewhere to output to) for logging; False otherwise."""
-        return self.logger is not None and len(logging.handlers) != 0
-
+    @classmethod
+    def initLogging(cls,**keys): cls.init_logging(**keys);  #pylint: disable=unnecessary-semicolon
+    
     @classmethod
     def init_logging(cls,**keys):
         """
@@ -76,14 +77,35 @@ class MyLoggingBase(object):
         file_log_lvl='DEBUG'  # level to log in file (None to not log to file)
         console_log_lvl='DEBUG'  # level to log to console
         show_warning=True # show warning for not writing to the file or console.
+        config_file='ABS/FILE/PATH.[ini|json]' # load config details from config file
         # valid log_lvls: None,DEBUG,INFO,WARNING,ERROR,CRITICAL
         """
+        # check config file first!
+        config_file = keys.get('config_file',None)
+        if config_file:
+            # extension?
+            config_ext = os.path.splitext(config_file)[1].lower()
+            if config_ext == '.json':
+                # imports
+                import json
+                from logging.config import dictConfig
+                # open and parse json
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+                dictConfig(config) # load!
+            elif config_ext == '.ini':
+                from logging.config import fileConfig
+                fileConfig(config_file)
+            else:
+                raise ValueError('unable to load extension for config file, "{0}"'.format(config_file))
+            return #exit
+        
         # set values
         file_log_name = keys.get('file_log_name',None)
         file_log_lvl = keys.get('file_log_lvl','DEBUG')
         console_log_lvl = keys.get('console_log_lvl','DEBUG')
         show_warning = keys.get('show_warning',True)
-
+        
         # raise error if bad value passed
         valid_log_lvls = (None,'DEBUG','INFO','WARNING','ERROR','CRITICAL')
         if file_log_lvl not in valid_log_lvls:
@@ -106,7 +128,8 @@ class MyLoggingBase(object):
             # set default directory
             directory = os.path.dirname(file_log_name)
             if directory == '':
-                file_log_name = cls._get_fd(filename=file_log_name,fd='output',call_depth=2)
+                # get_output_fd inside this will return this classes path output dir
+                file_log_name = cls.get_fd(filename=file_log_name,fd='output',call_depth=2)
                 directory = os.path.dirname(file_log_name)
             # create parent directory(s) if needed
             if not os.path.exists(directory): os.makedirs(directory)
@@ -115,7 +138,7 @@ class MyLoggingBase(object):
             fhndl = RotatingFileHandler(
                 filename = file_log_name,
                 mode='a',
-                maxBytes=10*1024*1024,
+                maxBytes=10485760, #10MB
                 backupCount=3)
             fhndl.setLevel(logging.__getattribute__(file_log_lvl))  #@UndefinedVariable pylint: disable=no-member
             fhndl.setFormatter(log_formatter)
@@ -154,6 +177,10 @@ class MyLoggingBase(object):
     #===========================================================================
     # static method for filling a dict with Nones where needed...
     #===========================================================================
+    @classmethod
+    def fillDict(cls,d,keys,val=None,**updates):  #pylint: disable=invalid-name
+        cls.fill_dict(d,keys,val,**updates)
+        
     @classmethod
     def fill_dict(cls,d,keys,val=None,**updates):  #pylint: disable=invalid-name
         """
@@ -198,14 +225,13 @@ class MyLoggingBase(object):
         """pass a filename to join with the resource folder (handles frozen)"""
         #dir_name = os.path.join(os.path.realpath(''),) #__file__
         #return cls.join_folder_and_file(dir_name,filename)
-        return cls._get_fd(filename=filename,fd='resources',call_depth=2)
-
+        return cls.get_fd(filename=filename,fd='resources',call_depth=2)
     @classmethod
     def get_output_fd(cls,filename=''):
         """pass a filename to join with the output folder (handles frozen)"""
-        return cls._get_fd(filename=filename,fd='output',call_depth=2)
+        return cls.get_fd(filename=filename,fd='output',call_depth=2)
     @classmethod
-    def _get_fd(cls,filename='', fd='', call_depth=2):
+    def get_fd(cls,filename='', fd='', call_depth=2):
         """get the output folder, depth > 1"""
         try: filepath =  sys._getframe(call_depth).f_code.co_filename  #pylint: disable=protected-access
         except: filepath = __file__  #pylint: disable=bare-except
@@ -214,25 +240,20 @@ class MyLoggingBase(object):
             ),fd,filename)
 
     @classmethod
-    def join_folder_and_file(cls,folder, filename=''):
-        """tests if folder/file exists. returns None if if doesn't, the filepath if successful!"""
-        path = os.path.join(folder, filename) if isinstance(filename,basestring) else folder
+    def path_exists(cls,folder,filename=''):
+        """
+        tests if folder/file exists.
+        returns None if if doesn't, the folder/file if successful!
+        """
+        path = os.path.abspath(os.path.join(folder, filename) if filename else folder)
         return path if os.path.exists(path) else None
 
     #===========================================================================
     # Summary
     #===========================================================================
-    def _get_summary_info(self):
-        """deprecated"""
-        return self.get_summary_info()
-
     def get_summary_info(self):  #pylint: disable=no-self-use
         """override to add useful summary info."""
         return []
-
-    def _log_summary_info(self,*args,**keys):
-        """deprecated"""
-        self.log_summary_info(*args,**keys)
 
     def log_summary_info(self,prepend=''):
         """call to log all important summary information."""
@@ -242,7 +263,6 @@ class MyLoggingBase(object):
         else:
             for i in self.get_summary_info():
                 self.logger.info('%s',i)
-
 
     #===========================================================================
     # Timestamp
@@ -260,8 +280,8 @@ class MyLoggingBase(object):
     def datetime_to_timestamp(cls,dt,for_file=False,dt_format=None,add_sec=0):  #pylint: disable=invalid-name
         """Formats the datetime passed to ISO 8601 string.
         for_file -- if True, replaces colons with periods."""
-        if dt_format is None: dt_format = cls._TIMESTAMP_FORMAT
-        if for_file: dt_format = dt_format.replace(':','.')
+        if dt_format is None: dt_format = cls.TIMESTAMP_FORMAT
+        if for_file: dt_format = dt_format.replace(':','').replace('-','').replace('T','')
 
         if add_sec: dt += datetime.timedelta(seconds=add_sec)
         # only accurate to 3 for win8.1, but 6 given (for after sec)
@@ -280,9 +300,9 @@ class MyLoggingBase(object):
     # Reading/Writing key-value pairing files
     #===========================================================================
     @staticmethod
-    def read_file_key_values(filename,*keys):  # @UnusedVariable pylint: disable=unused-argument
+    def read_file_key_values(filename):
         """reads the file (filename) and returns the key-
-        value pairing (a dictionary).  keys is not used"""
+        value pairing (a dictionary)"""
         ret = dict() #{i:None for i in keys}
 
         try:
@@ -320,9 +340,14 @@ if __name__ == '__main__':
     #try: import tests.test_myloggingbase
     #except ImportError: print 'no test for myloggingbase'
     #else: tests.test_myloggingbase.run_test()
-    MyLoggingBase.init_logging(file_log_lvl='DEBUG',
-                               file_log_name=os.path.basename(__file__)+'.log')
-    BASE_LOGGER = MyLoggingBase()
+    MyLoggingBase.init_logging(
+        file_log_lvl=None#'DEBUG'
+        ,show_warnings=False
+    )
+    #file_log_name=os.path.basename(__file__)+'.log')
+    base = MyLoggingBase()
 
-    BASE_LOGGER.logger.info('hello world')
-    BASE_LOGGER.get_output_fd()
+    base.logger.info('hello world')
+    out = base.get_output_fd()
+    base.logger.info('output - %s',out)
+    
