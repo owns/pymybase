@@ -65,7 +65,7 @@ class MyLoggingBase(object):
             self.logger.addHandler(NullHandler())
     
     #===========================================================================
-    # Logging
+    #--- Logging
     #===========================================================================
     @classmethod
     def initLogging(cls,**keys): cls.init_logging(**keys);  #pylint: disable=unnecessary-semicolon
@@ -175,7 +175,7 @@ class MyLoggingBase(object):
         '''
 
     #===========================================================================
-    # static method for filling a dict with Nones where needed...
+    #--- static method for filling a dict with Nones where needed...
     #===========================================================================
     @classmethod
     def fillDict(cls,d,keys,val=None,**updates):  #pylint: disable=invalid-name
@@ -217,7 +217,7 @@ class MyLoggingBase(object):
             cls._fill_dict(d[key[:ind]],key[ind+1:],val)
 
     #===============================================================================
-    # get/join with project folders
+    #--- get/join with project folders
     #===============================================================================
     # NOTE: __file__ will still reference this loc..., assuming working dir...
     @classmethod
@@ -249,7 +249,7 @@ class MyLoggingBase(object):
         return path if os.path.exists(path) else None
 
     #===========================================================================
-    # Summary
+    #--- Summary
     #===========================================================================
     def get_summary_info(self):  #pylint: disable=no-self-use
         """override to add useful summary info."""
@@ -265,7 +265,7 @@ class MyLoggingBase(object):
                 self.logger.info('%s',i)
 
     #===========================================================================
-    # Timestamp
+    #--- Timestamp
     #===========================================================================
     @staticmethod
     def get_current_datetime(utc=False,add_sec=0):
@@ -297,7 +297,7 @@ class MyLoggingBase(object):
                     for_file=for_file,dt_format=dt_format)
 
     #===========================================================================
-    # Reading/Writing key-value pairing files
+    #--- Reading/Writing key-value pairing files
     #===========================================================================
     @staticmethod
     def read_file_key_values(filename):
@@ -334,7 +334,7 @@ class MyLoggingBase(object):
         else: return True
 
 #===============================================================================
-# Main
+#--- Main
 #===============================================================================
 if __name__ == '__main__':
     #try: import tests.test_myloggingbase
